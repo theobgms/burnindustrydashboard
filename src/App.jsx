@@ -43,7 +43,6 @@ const MORNING_STEPS = [
 const NIGHT_STEPS = [
   { id: "n1", title: "Eat a real meal", desc: "Before anything else. Protein. This is the most important meal of your day." },
   { id: "n2", title: "Facial routine", desc: "You're already doing this. Keep it. It's grounding." },
-  { id: "n3", title: "Back up footage", desc: "20 minute timer. When it goes off, close the laptop." },
   { id: "n4", title: "Phone across the room", desc: "Not face down beside you. Across the room. Make reaching for it an act." },
   { id: "n5", title: "One sentence written", desc: "Whatever is loudest in your head. Externalize it." },
   { id: "n6", title: "Box breathing", desc: "Same as morning. 5 minutes. Then sleep." },
@@ -187,6 +186,7 @@ const C = { bg:'#0D0D0D', card:'#111', border:'#1e1e1e', gold:'#FFD60A', orange:
 const ROOMS = [
   { key:'today',    label:'TODAY',            sub:'Your daily battles',        color:C.gold },
   { key:'routines', label:'ROUTINES',         sub:'Morning · Night · 2AM',     color:C.blue },
+  { key:'journal',  label:'JOURNAL',          sub:'Your sentences, by day',    color:C.text },
   { key:'goals',    label:'GOALS',            sub:'The boss — 150K',           color:C.red },
   { key:'pocket',   label:"MUSICIAN'S POCKET",sub:'Tour · bumpers · outreach', color:C.orange },
   { key:'money',    label:'MONEY',            sub:'The war chest',             color:C.gold },
@@ -214,6 +214,11 @@ export default function App() {
   const [showCrisis, setShowCrisis] = useState(false);
   const [streak, setStreak] = useState(0);
   const [koShown, setKoShown] = useState(false);
+  const [journal, setJournal] = useState({});
+  const [advanceData, setAdvanceData] = useState({});
+  const [bandEmails, setBandEmails] = useState('denz@burnindustry.com, simonouthit@gmail.com');
+  const [advanceShow, setAdvanceShow] = useState('');
+  const [advanceMode, setAdvanceMode] = useState('promoter');
 
   const today = todayStr();
   const todayShow = getShowForDate(today);
@@ -239,6 +244,12 @@ export default function App() {
       const pref = JSON.parse(localStorage.getItem('bi_prefs') || '{}');
       if (typeof pref.sound === 'boolean') setSound(pref.sound);
       if (typeof pref.music === 'boolean') setMusic(pref.music);
+      const jr = JSON.parse(localStorage.getItem('bi_journal') || '{}');
+      if (jr && typeof jr === 'object') setJournal(jr);
+      const adv = JSON.parse(localStorage.getItem('bi_advance') || '{}');
+      if (adv && typeof adv === 'object') setAdvanceData(adv);
+      const be = localStorage.getItem('bi_band_emails');
+      if (be) setBandEmails(be);
     } catch(e) {}
     setTimeout(() => setLoaded(true), 80);
   }, []);
@@ -255,6 +266,29 @@ export default function App() {
     try { localStorage.setItem('bi_prefs', JSON.stringify({ sound, music })); } catch(e) {}
   }, [sound, music, loaded]);
 
+  useEffect(() => {
+    if (!loaded) return;
+    try { localStorage.setItem('bi_journal', JSON.stringify(journal)); } catch(e) {}
+  }, [journal, loaded]);
+
+  function setJournalField(field, value) {
+    setJournal(j => ({ ...j, [today]: { ...(j[today] || {}), [field]: value } }));
+  }
+
+  useEffect(() => {
+    if (!loaded) return;
+    try { localStorage.setItem('bi_advance', JSON.stringify(advanceData)); } catch(e) {}
+  }, [advanceData, loaded]);
+
+  useEffect(() => {
+    if (!loaded) return;
+    try { localStorage.setItem('bi_band_emails', bandEmails); } catch(e) {}
+  }, [bandEmails, loaded]);
+
+  function setAdvField(date, field, value) {
+    setAdvanceData(d => ({ ...d, [date]: { ...(d[date] || {}), [field]: value } }));
+  }
+
   // music on/off
   useEffect(() => {
     if (music && screen !== 'cold') startMusic(); else stopMusic();
@@ -265,9 +299,14 @@ export default function App() {
   const nightCount = Object.values(nightDone).filter(Boolean).length;
   const workDone = opsDone && contentDone;
 
-  // KO + streak when the day's two battles are done
+  // full-day progress: morning + both battles + night
+  const totalTasks = MORNING_STEPS.length + 2 + NIGHT_STEPS.length;
+  const doneTasks = morningCount + (opsDone?1:0) + (contentDone?1:0) + nightCount;
+  const dayComplete = morningCount === MORNING_STEPS.length && opsDone && contentDone && nightCount === NIGHT_STEPS.length;
+
+  // KO + streak when the WHOLE day is done
   useEffect(() => {
-    if (workDone && !koShown && loaded) {
+    if (dayComplete && !koShown && loaded) {
       setKoShown(true);
       snd(sfxKO);
       try {
@@ -279,7 +318,7 @@ export default function App() {
         }
       } catch(e) {}
     }
-  }, [workDone, koShown, loaded]);
+  }, [dayComplete, koShown, loaded]);
 
   function unlockExtra() {
     const remaining = [...OPS_TASKS, ...CONTENT_TASKS]
@@ -438,10 +477,23 @@ export default function App() {
             ))}
           </div>
 
+          {/* DAY PROGRESS — fills as the whole day gets done */}
+          <div style={{ ...card }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:8 }}>
+              <div style={{ ...label, color:dayComplete?C.gold:C.muted }}>DAY PROGRESS</div>
+              <div style={{ ...mono, fontSize:11, color:C.muted }}>
+                {doneTasks}/{totalTasks}{streak > 0 ? ` · ${streak} day streak` : ''}
+              </div>
+            </div>
+            <div style={{ background:'#0a0a0a', border:`1px solid ${C.border}`, borderRadius:3, height:16, overflow:'hidden' }}>
+              <div style={{ height:'100%', width:`${(doneTasks/totalTasks)*100}%`, background:dayComplete?C.gold:`linear-gradient(90deg, ${C.red}, ${C.gold})`, transition:'width 0.4s' }} />
+            </div>
+          </div>
+
           {koShown && (
             <div style={{ ...card, borderColor:C.gold, textAlign:'center', background:'#14110a', animation:'biPop 0.3s' }}>
               <div style={{ ...pixel, fontSize:18, color:C.gold }}>DAY KILLED</div>
-              <div style={{ ...mono, fontSize:11, color:C.muted, marginTop:8 }}>Both battles down. {streak} day streak. Boss progress saved — rest up.</div>
+              <div style={{ ...mono, fontSize:11, color:C.muted, marginTop:8 }}>Morning, both battles, night — all down. {streak} day streak. Rest up.</div>
             </div>
           )}
 
@@ -527,6 +579,15 @@ export default function App() {
                   <span style={{ ...mono, fontSize:10, color:C.muted }}>{step.time}</span>
                 </div>
                 <div style={{ ...mono, fontSize:12, color:C.muted, lineHeight:1.6 }}>{step.desc}</div>
+                {(step.id === 'm3' || step.id === 'm5') && (
+                  <input
+                    onClick={e => e.stopPropagation()}
+                    value={(journal[today] && journal[today][step.id === 'm3' ? 'honest' : 'good']) || ''}
+                    onChange={e => setJournalField(step.id === 'm3' ? 'honest' : 'good', e.target.value)}
+                    placeholder="Write it here — saved to JOURNAL"
+                    style={{ ...mono, marginTop:10, width:'100%', background:'#0a0a0a', border:`1px solid ${C.border}`, borderRadius:3, padding:'8px 10px', fontSize:12, color:C.text, outline:'none' }}
+                  />
+                )}
               </div>
             </div>
           ))}
@@ -549,6 +610,15 @@ export default function App() {
               <div style={{ flex:1 }}>
                 <div style={{ ...mono, fontSize:13, fontWeight:700, marginBottom:4 }}>{step.title}</div>
                 <div style={{ ...mono, fontSize:12, color:C.muted, lineHeight:1.6 }}>{step.desc}</div>
+                {step.id === 'n5' && (
+                  <input
+                    onClick={e => e.stopPropagation()}
+                    value={(journal[today] && journal[today].night) || ''}
+                    onChange={e => setJournalField('night', e.target.value)}
+                    placeholder="Write it here — saved to JOURNAL"
+                    style={{ ...mono, marginTop:10, width:'100%', background:'#0a0a0a', border:`1px solid ${C.border}`, borderRadius:3, padding:'8px 10px', fontSize:12, color:C.text, outline:'none' }}
+                  />
+                )}
               </div>
             </div>
           ))}
@@ -580,6 +650,39 @@ export default function App() {
               ))}
             </div>
           )}
+        </>}
+
+        {/* ══════════ JOURNAL ══════════ */}
+        {room === 'journal' && <>
+          <div style={{ ...card, borderLeft:`3px solid ${C.text}` }}>
+            <div style={{ ...label, color:C.text }}>JOURNAL</div>
+            <div style={{ ...mono, fontSize:12, color:C.muted, lineHeight:1.6 }}>Your three sentences, kept by day. Write them in ROUTINES — they collect here. Scroll back whenever.</div>
+          </div>
+
+          {(() => {
+            const dates = Object.keys(journal)
+              .filter(d => { const e = journal[d]; return e && (e.honest || e.good || e.night); })
+              .sort((a, b) => b.localeCompare(a));
+            if (dates.length === 0) {
+              return <div style={{ ...mono, fontSize:12, color:C.muted, fontStyle:'italic', paddingTop:8 }}>Nothing logged yet. Your sentences show up here once you write them in ROUTINES.</div>;
+            }
+            const FIELDS = [
+              { key:'honest', label:'HONEST', color:C.gold },
+              { key:'good',   label:'ONE GOOD THING', color:C.orange },
+              { key:'night',  label:'NIGHT', color:C.blue },
+            ];
+            return dates.map(d => (
+              <div key={d} style={card}>
+                <div style={{ ...label, marginBottom:10 }}>{d === today ? 'TODAY' : formatDate(d)}</div>
+                {FIELDS.map(f => journal[d][f.key] ? (
+                  <div key={f.key} style={{ marginBottom:10 }}>
+                    <div style={{ ...mono, fontSize:9, letterSpacing:'0.2em', color:f.color, marginBottom:3 }}>{f.label}</div>
+                    <div style={{ ...mono, fontSize:13, color:C.text, lineHeight:1.5 }}>{journal[d][f.key]}</div>
+                  </div>
+                ) : null)}
+              </div>
+            ));
+          })()}
         </>}
 
         {/* ══════════ GOALS (boss) ══════════ */}
@@ -619,6 +722,189 @@ export default function App() {
 
         {/* ══════════ MUSICIAN'S POCKET (tour + bumpers + outreach) ══════════ */}
         {room === 'pocket' && <>
+          {(() => {
+            const origin = (typeof window !== 'undefined' && window.location.origin) ? window.location.origin : '';
+            const SP_URL = origin + '/obgms-stage-plot.jpeg';
+            const RD_URL = origin + '/obgms-rider.pdf';
+            const upcoming = TOUR.filter(s => s.city !== 'OFF' && daysUntil(s.date) >= 0);
+            const selDate = advanceShow || (upcoming[0] && upcoming[0].date) || '';
+            const sel = TOUR.find(s => s.date === selDate);
+            const d = (advanceData[selDate] || {});
+
+            const promoterSubject = sel ? `The OBGMs — Advance — ${sel.city} ${formatDate(sel.date)}` : 'The OBGMs — Advance';
+            const promoterBody = `Hello everyone,
+
+Hope you're doing well! We're really excited to be a part of this show and can't wait to get in the room with everyone.
+
+Please find our Stage Plot, Input List, and Rider below:
+Stage Plot + Input List: ${SP_URL}
+Rider: ${RD_URL}
+
+Please fill in all fields below and reply back to this email at your earliest convenience. Don't hesitate to reach out if you have any questions.
+
+MAIN CONTACTS
+Densil McFarlane: denz@burnindustry.com
+Simon Outhit: simonouthit@gmail.com
+
+TRAVEL PARTY
+We are traveling as a party of 4 in one van. We do not travel with a FOH engineer, monitor engineer, or lighting director.
+
+BACKLINE
+We are comfortable backlining drums for the show. Other artists on the bill will need to provide their own breakables.
+
+---
+
+SHOW SCHEDULE
+Please send the full show schedule for the day, including load-in, soundcheck, doors, set times for all acts, and curfew.
+
+VENUE
+Load-in instructions:
+Arrival contact (name & phone):
+Parking (we need 1 van spot):
+
+PRODUCTION
+Our stage plot and rider are linked above. We are traveling with all backline but will need mics, stands, and DIs provided. Please flag any issues with this.
+
+CREW
+We do not travel with a tour manager. Please confirm the following will be provided:
+House FOH engineer:
+Monitor engineer:
+Lighting director:
+
+HOSPITALITY
+Dressing room provided: (Y/N)
+Dressing room location:
+Meals or buyout:
+Wifi network:
+Wifi password:
+Showers available:
+Laundry available:
+
+MERCHANDISING
+Merch table location:
+Merch split:
+House merch seller available if needed:
+
+COMPS
+Guest list spots allocated:
+Guest list submitted to:
+Deadline:
+
+CONTACTS
+On-site artist liaison (name, email, phone):
+Production contact (name, email, phone):
+
+Thanks so much — genuinely looking forward to this one.
+
+Denz — The OBGMs`;
+
+            const bandSubject = sel ? `${sel.city} ${formatDate(sel.date)} — show + stay` : 'Show + stay details';
+            const bandBody = sel ? `Team,
+
+Here's the info for ${sel.city} on ${formatDate(sel.date)}.
+
+SHOW
+Venue: ${d.venue || sel.venue || 'TBD'}
+Address: ${d.venueAddr || 'TBD'}
+Load-in: ${d.loadin || 'TBD'}
+Set time: ${d.setTime || 'TBD'}
+
+STAY
+Hotel: ${d.hotel || 'TBD'}
+Address: ${d.hotelAddr || 'TBD'}
+Check-in: ${d.checkin || 'TBD'}
+Confirmation #: ${d.conf || 'TBD'}
+
+${d.notes ? 'NOTES\n' + d.notes + '\n\n' : ''}— Denz` : '';
+
+            const promoterMailto = `mailto:${encodeURIComponent(d.promoterEmail || '')}?subject=${encodeURIComponent(promoterSubject)}&body=${encodeURIComponent(promoterBody)}`;
+            const bandMailto = `mailto:${encodeURIComponent(bandEmails)}?subject=${encodeURIComponent(bandSubject)}&body=${encodeURIComponent(bandBody)}`;
+
+            const fld = (lbl, key, ph) => (
+              <div style={{ marginBottom:10 }}>
+                <div style={{ ...mono, fontSize:9, letterSpacing:'0.2em', color:C.muted, marginBottom:4 }}>{lbl}</div>
+                <input value={d[key] || ''} onChange={e => setAdvField(selDate, key, e.target.value)} placeholder={ph}
+                  style={{ ...mono, width:'100%', background:'#0a0a0a', border:`1px solid ${C.border}`, borderRadius:3, padding:'8px 10px', fontSize:12, color:C.text, outline:'none' }} />
+              </div>
+            );
+
+            return (
+              <>
+                <div style={{ ...card, borderLeft:`3px solid ${C.red}` }}>
+                  <div style={{ ...label, color:C.red }}>ADVANCE</div>
+                  <div style={{ ...mono, fontSize:12, color:C.muted, lineHeight:1.6 }}>Generate the promoter advance and the band logistics email for any upcoming show. Copy it, or open straight in your mail app.</div>
+                </div>
+
+                {/* SHOW PICKER */}
+                <div style={{ ...label, marginBottom:8 }}>SHOW</div>
+                <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:14 }}>
+                  {upcoming.map((s, i) => (
+                    <button key={i}
+                      style={{ ...mono, padding:'6px 12px', borderRadius:3, border:`1px solid ${selDate===s.date?C.red:C.border}`, background:selDate===s.date?C.red:'transparent', color:selDate===s.date?'#0D0D0D':C.muted, fontSize:10, letterSpacing:'0.1em', cursor:'pointer' }}
+                      onClick={() => { snd(sfxTap); setAdvanceShow(s.date); }}>
+                      {s.city} {formatDate(s.date)}
+                    </button>
+                  ))}
+                  {upcoming.length === 0 && <div style={{ ...mono, fontSize:12, color:C.muted, fontStyle:'italic' }}>No upcoming shows.</div>}
+                </div>
+
+                {/* MODE TOGGLE */}
+                <div style={{ display:'flex', gap:6, marginBottom:14 }}>
+                  {[['promoter','PROMOTER ADVANCE'],['band','BAND LOGISTICS']].map(([k,lbl]) => (
+                    <button key={k} onClick={() => { snd(sfxTap); setAdvanceMode(k); }}
+                      style={{ ...mono, flex:1, padding:'8px 10px', borderRadius:3, border:`1px solid ${advanceMode===k?C.gold:C.border}`, background:advanceMode===k?C.gold:'transparent', color:advanceMode===k?'#0D0D0D':C.muted, fontSize:10, letterSpacing:'0.12em', fontWeight:700, cursor:'pointer' }}>{lbl}</button>
+                  ))}
+                </div>
+
+                {sel && advanceMode === 'promoter' && (
+                  <div style={card}>
+                    {fld('PROMOTER EMAIL (optional — or add in your mail app)', 'promoterEmail', 'promoter@venue.com')}
+                    <div style={{ ...mono, fontSize:9, letterSpacing:'0.2em', color:C.muted, margin:'4px 0 6px' }}>PREVIEW</div>
+                    <div style={{ ...mono, background:'#0a0a0a', border:`1px solid ${C.border}`, borderRadius:3, padding:12, fontSize:11, lineHeight:1.6, color:C.text, whiteSpace:'pre-wrap', maxHeight:200, overflowY:'auto', marginBottom:12 }}>{promoterBody}</div>
+                    <div style={{ display:'flex', gap:8 }}>
+                      <button style={{ ...btnFull(C.gold), flex:1 }} onClick={() => copyText(promoterBody, 'padv')}>{copied==='padv'?'COPIED ✓':'COPY EMAIL'}</button>
+                      <a href={promoterMailto} style={{ ...btnOut(C.gold), flex:1, textAlign:'center', textDecoration:'none' }}>OPEN IN MAIL</a>
+                    </div>
+                    <div style={{ ...mono, fontSize:10, color:C.muted, marginTop:10, lineHeight:1.5 }}>Subject auto-set to: {promoterSubject}. Copy is most reliable for long emails — paste into Gmail and send.</div>
+                  </div>
+                )}
+
+                {sel && advanceMode === 'band' && (
+                  <div style={card}>
+                    <div style={{ ...mono, fontSize:9, letterSpacing:'0.2em', color:C.muted, marginBottom:4 }}>BAND EMAILS (saved)</div>
+                    <input value={bandEmails} onChange={e => setBandEmails(e.target.value)} placeholder="comma-separated"
+                      style={{ ...mono, width:'100%', background:'#0a0a0a', border:`1px solid ${C.border}`, borderRadius:3, padding:'8px 10px', fontSize:12, color:C.text, outline:'none', marginBottom:14 }} />
+                    {fld('VENUE', 'venue', sel.venue && sel.venue !== 'TBD' ? sel.venue : 'venue')}
+                    {fld('VENUE ADDRESS', 'venueAddr', 'street, city')}
+                    {fld('LOAD-IN', 'loadin', 'e.g. 4:00 PM')}
+                    {fld('SET TIME', 'setTime', 'e.g. 10:30 PM')}
+                    {fld('HOTEL', 'hotel', 'hotel name')}
+                    {fld('HOTEL ADDRESS', 'hotelAddr', 'street, city')}
+                    {fld('CHECK-IN', 'checkin', 'e.g. June 13, after 3 PM')}
+                    {fld('CONFIRMATION #', 'conf', 'booking ref')}
+                    {fld('NOTES', 'notes', 'anything else')}
+                    <div style={{ ...mono, fontSize:9, letterSpacing:'0.2em', color:C.muted, margin:'4px 0 6px' }}>PREVIEW</div>
+                    <div style={{ ...mono, background:'#0a0a0a', border:`1px solid ${C.border}`, borderRadius:3, padding:12, fontSize:11, lineHeight:1.6, color:C.text, whiteSpace:'pre-wrap', maxHeight:200, overflowY:'auto', marginBottom:12 }}>{bandBody}</div>
+                    <div style={{ display:'flex', gap:8 }}>
+                      <button style={{ ...btnFull(C.gold), flex:1 }} onClick={() => copyText(bandBody, 'badv')}>{copied==='badv'?'COPIED ✓':'COPY EMAIL'}</button>
+                      <a href={bandMailto} style={{ ...btnOut(C.gold), flex:1, textAlign:'center', textDecoration:'none' }}>OPEN IN MAIL</a>
+                    </div>
+                  </div>
+                )}
+
+                {/* DOC LINKS */}
+                <div style={card}>
+                  <div style={{ ...label, marginBottom:8 }}>DOCS</div>
+                  <a href={SP_URL} target="_blank" rel="noreferrer" style={{ ...mono, display:'block', fontSize:12, color:C.gold, marginBottom:8, textDecoration:'none' }}>→ Stage Plot + Input List</a>
+                  <a href={RD_URL} target="_blank" rel="noreferrer" style={{ ...mono, display:'block', fontSize:12, color:C.gold, textDecoration:'none' }}>→ Hospitality Rider</a>
+                  <div style={{ ...mono, fontSize:10, color:C.muted, marginTop:10, lineHeight:1.5 }}>These go live once the two files are in the app's public folder. Same links are baked into the promoter email.</div>
+                </div>
+
+                <div style={{ borderTop:`1px solid ${C.border}`, margin:'24px 0 4px' }} />
+              </>
+            );
+          })()}
+
           {/* OUTREACH */}
           <div style={{ ...card, borderLeft:`3px solid ${C.gold}` }}>
             <div style={{ ...label, color:C.gold }}>OUTREACH RULE</div>
