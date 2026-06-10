@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 const TOUR = [
   { date: "2026-05-25", city: "Eindhoven", country: "NL", venue: "TBD" },
@@ -98,6 +98,9 @@ const CONTENT_TASKS = [
   "Respond to 10 comments — build community",
 ];
 
+const FOLLOWER_GOAL = 150000;
+const FOLLOWERS_NOW = 16500;
+
 function todayStr() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -134,8 +137,69 @@ function getDailyTask(list, offset = 0) {
   return list[idx];
 }
 
+// ── Web Audio: synthesized SFX + music loop (no files) ──
+let _ac = null;
+function ac() {
+  if (typeof window === "undefined") return null;
+  if (!_ac) { try { _ac = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) { return null; } }
+  if (_ac.state === "suspended") _ac.resume();
+  return _ac;
+}
+function blip(freq = 440, dur = 0.08, type = "square", vol = 0.15) {
+  const c = ac(); if (!c) return;
+  const o = c.createOscillator(), g = c.createGain();
+  o.type = type; o.frequency.value = freq;
+  g.gain.setValueAtTime(vol, c.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + dur);
+  o.connect(g); g.connect(c.destination);
+  o.start(); o.stop(c.currentTime + dur);
+}
+function sfxTap()  { blip(660, 0.06, "square", 0.12); }
+function sfxCheck(){ blip(880, 0.07, "square", 0.13); setTimeout(()=>blip(1320,0.09,"square",0.12),60); }
+function sfxOpen() { blip(330, 0.05, "sawtooth", 0.10); setTimeout(()=>blip(495,0.06,"sawtooth",0.10),50); }
+function sfxWarCry(){
+  const c = ac(); if (!c) return;
+  [110,146,196,261].forEach((f,i)=>setTimeout(()=>blip(f,0.18,"sawtooth",0.16),i*70));
+  setTimeout(()=>blip(523,0.5,"square",0.14),320);
+}
+function sfxKO() {
+  [523,659,784,1046].forEach((f,i)=>setTimeout(()=>blip(f,0.16,"square",0.16),i*90));
+}
+
+// chiptune loop — placeholder until "Changes" instrumental mp3 is dropped in.
+// To swap: replace startMusic/stopMusic with an <audio loop src="/changes.mp3"> ref.
+let _musicTimer = null;
+function startMusic() {
+  const c = ac(); if (!c || _musicTimer) return;
+  const seq = [196,0,261,0,294,0,261,0,196,0,174,0,196,0,0,0];
+  let i = 0;
+  _musicTimer = setInterval(() => {
+    const f = seq[i % seq.length];
+    if (f) blip(f, 0.12, "triangle", 0.06);
+    i++;
+  }, 180);
+}
+function stopMusic() {
+  if (_musicTimer) { clearInterval(_musicTimer); _musicTimer = null; }
+}
+
+const C = { bg:'#0D0D0D', card:'#111', border:'#1e1e1e', gold:'#FFD60A', orange:'#ff6b35', red:'#D91F26', blue:'#7eb8f7', text:'#F2F2F2', muted:'#666', dim:'#2a2a2a' };
+const ROOMS = [
+  { key:'today',    label:'TODAY',            sub:'Your daily battles',        color:C.gold },
+  { key:'routines', label:'ROUTINES',         sub:'Morning · Night · 2AM',     color:C.blue },
+  { key:'goals',    label:'GOALS',            sub:'The boss — 150K',           color:C.red },
+  { key:'pocket',   label:"MUSICIAN'S POCKET",sub:'Tour · bumpers · outreach', color:C.orange },
+  { key:'money',    label:'MONEY',            sub:'The war chest',             color:C.gold },
+];
+
 export default function App() {
-  const [mode, setMode] = useState('morning');
+  const [screen, setScreen] = useState('cold'); // cold | hub | room
+  const [room, setRoom] = useState('today');
+  const [drawer, setDrawer] = useState(false);
+  const [sound, setSound] = useState(true);
+  const [music, setMusic] = useState(false);
+  const [shake, setShake] = useState(false);
+
   const [morningDone, setMorningDone] = useState({});
   const [nightDone, setNightDone] = useState({});
   const [crisisDone, setCrisisDone] = useState({});
@@ -148,6 +212,8 @@ export default function App() {
   const [copied, setCopied] = useState('');
   const [loaded, setLoaded] = useState(false);
   const [showCrisis, setShowCrisis] = useState(false);
+  const [streak, setStreak] = useState(0);
+  const [koShown, setKoShown] = useState(false);
 
   const today = todayStr();
   const todayShow = getShowForDate(today);
@@ -155,6 +221,8 @@ export default function App() {
   const twoWeekShow = getTwoWeekShow();
   const opsTask = getDailyTask(OPS_TASKS, 0);
   const contentTask = getDailyTask(CONTENT_TASKS, 5);
+
+  const snd = (fn) => { if (sound) fn(); };
 
   useEffect(() => {
     try {
@@ -165,6 +233,12 @@ export default function App() {
       if (saved.contentDone) setContentDone(saved.contentDone);
       if (saved.extraTasks) setExtraTasks(saved.extraTasks);
       if (saved.extraDone) setExtraDone(saved.extraDone);
+      if (saved.koShown) setKoShown(saved.koShown);
+      const st = JSON.parse(localStorage.getItem('bi_streak') || '{}');
+      if (typeof st.count === 'number') setStreak(st.count);
+      const pref = JSON.parse(localStorage.getItem('bi_prefs') || '{}');
+      if (typeof pref.sound === 'boolean') setSound(pref.sound);
+      if (typeof pref.music === 'boolean') setMusic(pref.music);
     } catch(e) {}
     setTimeout(() => setLoaded(true), 80);
   }, []);
@@ -172,13 +246,40 @@ export default function App() {
   useEffect(() => {
     if (!loaded) return;
     try {
-      localStorage.setItem('bi_dash_' + today, JSON.stringify({ morningDone, nightDone, opsDone, contentDone, extraTasks, extraDone }));
+      localStorage.setItem('bi_dash_' + today, JSON.stringify({ morningDone, nightDone, opsDone, contentDone, extraTasks, extraDone, koShown }));
     } catch(e) {}
-  }, [morningDone, nightDone, opsDone, contentDone, extraTasks, extraDone, loaded]);
+  }, [morningDone, nightDone, opsDone, contentDone, extraTasks, extraDone, koShown, loaded]);
+
+  useEffect(() => {
+    if (!loaded) return;
+    try { localStorage.setItem('bi_prefs', JSON.stringify({ sound, music })); } catch(e) {}
+  }, [sound, music, loaded]);
+
+  // music on/off
+  useEffect(() => {
+    if (music && screen !== 'cold') startMusic(); else stopMusic();
+    return () => stopMusic();
+  }, [music, screen]);
 
   const morningCount = Object.values(morningDone).filter(Boolean).length;
   const nightCount = Object.values(nightDone).filter(Boolean).length;
   const workDone = opsDone && contentDone;
+
+  // KO + streak when the day's two battles are done
+  useEffect(() => {
+    if (workDone && !koShown && loaded) {
+      setKoShown(true);
+      snd(sfxKO);
+      try {
+        const st = JSON.parse(localStorage.getItem('bi_streak') || '{}');
+        if (st.lastDay !== today) {
+          const next = (st.count || 0) + 1;
+          localStorage.setItem('bi_streak', JSON.stringify({ count: next, lastDay: today }));
+          setStreak(next);
+        }
+      } catch(e) {}
+    }
+  }, [workDone, koShown, loaded]);
 
   function unlockExtra() {
     const remaining = [...OPS_TASKS, ...CONTENT_TASKS]
@@ -195,147 +296,199 @@ export default function App() {
     }).catch(() => {});
   }
 
-  const C = { bg:'#080808', card:'#111', border:'#1e1e1e', gold:'#ffd732', orange:'#ff6b35', red:'#e8192c', blue:'#7eb8f7', text:'#f0ece0', muted:'#666', dim:'#2a2a2a' };
+  function enter() {
+    snd(sfxWarCry);
+    setShake(true);
+    setTimeout(() => setShake(false), 420);
+    setTimeout(() => setScreen('hub'), 260);
+  }
+  function go(r) { snd(sfxOpen); setRoom(r); setScreen('room'); setDrawer(false); }
+
   const days = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
   const months = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
   const now = new Date();
 
-  const base = { fontFamily:"'Courier New',Courier,monospace", boxSizing:'border-box' };
+  const display = { fontFamily:"'Anton',sans-serif", letterSpacing:'0.02em', textTransform:'uppercase' };
+  const pixel = { fontFamily:"'Press Start 2P',monospace" };
+  const mono = { fontFamily:"'Space Mono',monospace" };
+  const base = { fontFamily:"'Space Mono',monospace", boxSizing:'border-box' };
   const card = { ...base, background:C.card, border:`1px solid ${C.border}`, borderRadius:4, padding:16, marginBottom:10 };
   const label = { fontSize:9, letterSpacing:'0.35em', color:C.muted, marginBottom:6, textTransform:'uppercase' };
-  const navBtn = (active) => ({ ...base, padding:'7px 12px', borderRadius:3, border:`1px solid ${active?C.gold:C.border}`, background:active?C.gold:'transparent', color:active?'#080808':C.muted, fontSize:10, letterSpacing:'0.2em', fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' });
+  const navBtn = (active) => ({ ...base, padding:'7px 12px', borderRadius:3, border:`1px solid ${active?C.gold:C.border}`, background:active?C.gold:'transparent', color:active?'#0D0D0D':C.muted, fontSize:10, letterSpacing:'0.2em', fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' });
   const check = (done, color) => ({ width:28, height:28, borderRadius:'50%', border:`2px solid ${done?color:C.dim}`, background:done?color:'transparent', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0, transition:'all 0.2s' });
-  const btnFull = (color) => ({ ...base, padding:'10px 18px', background:color, border:`1px solid ${color}`, color:'#080808', fontSize:10, letterSpacing:'0.25em', fontWeight:700, cursor:'pointer', borderRadius:3 });
+  const btnFull = (color) => ({ ...base, padding:'10px 18px', background:color, border:`1px solid ${color}`, color:'#0D0D0D', fontSize:10, letterSpacing:'0.25em', fontWeight:700, cursor:'pointer', borderRadius:3 });
   const btnOut = (color) => ({ ...base, padding:'10px 18px', background:'transparent', border:`1px solid ${color}`, color, fontSize:10, letterSpacing:'0.25em', fontWeight:700, cursor:'pointer', borderRadius:3 });
 
+  // ───────────────────────── COLD OPEN ─────────────────────────
+  if (screen === 'cold') {
+    return (
+      <div onClick={enter} style={{ minHeight:'100vh', background:C.bg, color:C.text, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', cursor:'pointer', padding:24, textAlign:'center', ...base, animation: shake ? 'biShake 0.4s' : 'none' }}>
+        <style>{keyframes}</style>
+        <div style={{ ...mono, fontSize:10, letterSpacing:'0.45em', color:C.muted, marginBottom:24 }}>BURN INDUSTRY / THE OBGMS</div>
+        <div style={{ ...display, fontSize:'clamp(44px,13vw,92px)', lineHeight:0.92, color:C.text }}>LET'S</div>
+        <div style={{ ...display, fontSize:'clamp(44px,13vw,92px)', lineHeight:0.92, color:C.red }}>FUCKING</div>
+        <div style={{ ...display, fontSize:'clamp(44px,13vw,92px)', lineHeight:0.92, color:C.gold }}>GO</div>
+        <div style={{ ...mono, fontSize:12, color:C.muted, maxWidth:300, marginTop:28, lineHeight:1.7 }}>
+          16,500 today. 150,000 by year end. Every show sold out. You drive the ship.
+        </div>
+        <div style={{ ...pixel, fontSize:9, color:C.gold, marginTop:36, animation:'biBlink 1.2s steps(1) infinite' }}>TAP TO ENTER</div>
+      </div>
+    );
+  }
+
+  // ───────────────────────── HUB ─────────────────────────
+  if (screen === 'hub') {
+    return (
+      <div style={{ minHeight:'100vh', background:C.bg, color:C.text, padding:'28px 20px 60px', ...base }}>
+        <style>{keyframes}</style>
+        <div style={{ ...mono, fontSize:9, letterSpacing:'0.45em', color:C.muted, marginBottom:8 }}>BURN INDUSTRY / THE OBGMS</div>
+        <div style={{ ...display, fontSize:'clamp(34px,9vw,56px)', lineHeight:0.95, marginBottom:6 }}>CHOOSE YOUR<br/><span style={{ color:C.red }}>BATTLE</span></div>
+        <div style={{ ...mono, fontSize:11, color:C.muted, marginBottom:24 }}>
+          {todayShow ? `Tonight: ${todayShow.city}` : nextShows[0] ? `Next: ${nextShows[0].city} — ${formatDate(nextShows[0].date)}` : 'No upcoming shows'}
+          {streak > 0 ? ` · ${streak} day streak` : ''}
+        </div>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr', gap:10 }}>
+          {ROOMS.map(r => (
+            <button key={r.key} onClick={() => go(r.key)}
+              style={{ ...base, textAlign:'left', background:C.card, border:`1px solid ${C.border}`, borderLeft:`4px solid ${r.color}`, borderRadius:6, padding:'18px 18px', cursor:'pointer', color:C.text, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <div>
+                <div style={{ ...display, fontSize:22, color:r.color, lineHeight:1 }}>{r.label}</div>
+                <div style={{ ...mono, fontSize:11, color:C.muted, marginTop:5 }}>{r.sub}</div>
+              </div>
+              <span style={{ ...display, fontSize:24, color:C.dim }}>→</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // ───────────────────────── ROOM SHELL ─────────────────────────
+  const activeRoom = ROOMS.find(r => r.key === room) || ROOMS[0];
   return (
     <div style={{ minHeight:'100vh', background:C.bg, color:C.text, paddingBottom:80, ...base }}>
+      <style>{keyframes}</style>
 
-      {/* HEADER */}
-      <div style={{ padding:'24px 20px 0', opacity:loaded?1:0, transition:'opacity 0.5s' }}>
-        <div style={{ fontSize:9, letterSpacing:'0.45em', color:C.muted, marginBottom:6 }}>BURN INDUSTRY / THE OBGMS</div>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', marginBottom:16 }}>
-          <div>
-            <span style={{ fontSize:38, fontWeight:900, letterSpacing:'-0.03em' }}>{days[now.getDay()]}</span>
-            <span style={{ fontSize:38, fontWeight:900, color:C.gold, marginLeft:8 }}>{now.getDate()}</span>
-            <span style={{ fontSize:13, color:C.muted, marginLeft:8, letterSpacing:'0.2em' }}>{months[now.getMonth()]}</span>
-          </div>
-          {todayShow ? (
-            <div style={{ textAlign:'right' }}>
-              <div style={{ fontSize:9, letterSpacing:'0.3em', color:C.gold, marginBottom:3 }}>TONIGHT</div>
-              <div style={{ fontSize:15, fontWeight:700 }}>{todayShow.city}</div>
-              {todayShow.venue && todayShow.venue !== 'TBD' && <div style={{ fontSize:11, color:C.muted }}>{todayShow.venue}</div>}
-            </div>
-          ) : (
-            <div style={{ textAlign:'right' }}>
-              <div style={{ fontSize:9, letterSpacing:'0.3em', color:C.muted, marginBottom:3 }}>NEXT SHOW</div>
-              {nextShows[0] && <div style={{ fontSize:13, fontWeight:700 }}>{nextShows[0].city} — {formatDate(nextShows[0].date)}</div>}
-            </div>
-          )}
-        </div>
-
-        {/* STATUS */}
-        <div style={{ display:'flex', gap:8, marginBottom:4 }}>
-          {[
-            { label:'MORNING', count:morningCount, total:MORNING_STEPS.length, color:C.gold },
-            { label:'WORK', count:(opsDone?1:0)+(contentDone?1:0), total:2, color:C.orange },
-            { label:'NIGHT', count:nightCount, total:NIGHT_STEPS.length, color:C.blue },
-          ].map(b => (
-            <div key={b.label} style={{ flex:1, background:C.card, border:`1px solid ${b.count===b.total?b.color:C.border}`, borderRadius:3, padding:'8px 10px', transition:'border-color 0.3s' }}>
-              <div style={{ ...label, marginBottom:3 }}>{b.label}</div>
-              <div style={{ fontSize:14, fontWeight:700, color:b.count===b.total?b.color:C.text }}>{b.count}/{b.total}</div>
-            </div>
-          ))}
-        </div>
+      {/* TOP BAR */}
+      <div style={{ display:'flex', alignItems:'center', gap:12, padding:'16px 18px', borderBottom:`1px solid ${C.border}`, position:'sticky', top:0, background:C.bg, zIndex:40 }}>
+        <button onClick={() => { snd(sfxTap); setDrawer(true); }} style={{ ...base, background:'transparent', border:'none', color:C.text, fontSize:22, cursor:'pointer', lineHeight:1, padding:0 }}>≡</button>
+        <div style={{ ...display, fontSize:20, color:activeRoom.color, lineHeight:1 }}>{activeRoom.label}</div>
+        <button onClick={() => { snd(sfxTap); setScreen('hub'); }} style={{ ...mono, marginLeft:'auto', background:'transparent', border:`1px solid ${C.border}`, color:C.muted, fontSize:9, letterSpacing:'0.2em', padding:'6px 10px', borderRadius:3, cursor:'pointer' }}>HUB</button>
       </div>
 
-      {/* NAV */}
-      <div style={{ display:'flex', gap:6, padding:'14px 20px', overflowX:'auto', borderBottom:`1px solid ${C.border}`, marginTop:16 }}>
-        {[['morning','MORNING'],['work','WORK'],['night','NIGHT'],['vision','VISION'],['bumpers','BUMPERS'],['outreach','OUTREACH']].map(([key,lbl]) => (
-          <button key={key} style={navBtn(mode===key)} onClick={() => setMode(key)}>{lbl}</button>
-        ))}
-      </div>
-
-      <div style={{ padding:'20px 20px 0' }}>
-
-        {/* ── MORNING ── */}
-        {mode === 'morning' && <>
-          <div style={{ ...card, borderLeft:`3px solid ${C.gold}` }}>
-            <div style={{ ...label, color:C.gold }}>MORNING PROTOCOL</div>
-            <div style={{ fontSize:12, color:C.muted }}>Starts when you start moving. Not at a clock time.</div>
+      {/* DRAWER */}
+      {drawer && (
+        <div onClick={() => setDrawer(false)} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', zIndex:60 }}>
+          <div onClick={e => e.stopPropagation()} style={{ position:'absolute', left:0, top:0, bottom:0, width:268, maxWidth:'82vw', background:C.card, borderRight:`1px solid ${C.border}`, padding:'24px 18px', animation:'biSlideIn 0.22s ease-out', overflowY:'auto' }}>
+            <div style={{ ...mono, fontSize:9, letterSpacing:'0.4em', color:C.muted, marginBottom:18 }}>JUMP TO</div>
+            {ROOMS.map(r => (
+              <button key={r.key} onClick={() => go(r.key)}
+                style={{ ...base, display:'block', width:'100%', textAlign:'left', background: room===r.key ? '#0a0a0a' : 'transparent', border:`1px solid ${room===r.key ? r.color : C.border}`, borderRadius:5, padding:'12px 14px', marginBottom:8, cursor:'pointer' }}>
+                <div style={{ ...display, fontSize:16, color:r.color }}>{r.label}</div>
+                <div style={{ ...mono, fontSize:10, color:C.muted, marginTop:2 }}>{r.sub}</div>
+              </button>
+            ))}
+            <div style={{ borderTop:`1px solid ${C.border}`, margin:'18px 0 14px' }} />
+            <div style={{ ...mono, fontSize:9, letterSpacing:'0.4em', color:C.muted, marginBottom:12 }}>SETTINGS</div>
+            {[['SOUND', sound, () => setSound(s => !s)], ['MUSIC', music, () => { snd(sfxTap); setMusic(m => !m); }]].map(([lbl, on, fn]) => (
+              <div key={lbl} onClick={fn} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'10px 0', cursor:'pointer' }}>
+                <span style={{ ...mono, fontSize:12, color:C.text }}>{lbl}</span>
+                <span style={{ ...mono, fontSize:10, letterSpacing:'0.2em', color: on ? C.gold : C.muted, border:`1px solid ${on ? C.gold : C.border}`, borderRadius:3, padding:'3px 10px' }}>{on ? 'ON' : 'OFF'}</span>
+              </div>
+            ))}
           </div>
-          {MORNING_STEPS.map(step => (
-            <div key={step.id} style={{ display:'flex', gap:12, alignItems:'flex-start', padding:'14px 0', borderBottom:`1px solid ${C.border}`, opacity:morningDone[step.id]?0.4:1, transition:'opacity 0.3s', cursor:'pointer' }}
-              onClick={() => setMorningDone(p => ({...p,[step.id]:!p[step.id]}))}>
-              <div style={check(morningDone[step.id], C.gold)}>
-                {morningDone[step.id] && <span style={{ fontSize:12, color:'#080808', fontWeight:900 }}>✓</span>}
-              </div>
-              <div style={{ flex:1 }}>
-                <div style={{ display:'flex', gap:8, alignItems:'baseline', marginBottom:4 }}>
-                  <span style={{ fontSize:13, fontWeight:700 }}>{step.title}</span>
-                  <span style={{ fontSize:10, color:C.muted }}>{step.time}</span>
-                </div>
-                <div style={{ fontSize:12, color:C.muted, lineHeight:1.6 }}>{step.desc}</div>
-              </div>
+        </div>
+      )}
+
+      <div style={{ padding:'20px 20px 0', opacity:loaded?1:0, transition:'opacity 0.4s' }}>
+
+        {/* ══════════ TODAY ══════════ */}
+        {room === 'today' && <>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', marginBottom:18 }}>
+            <div>
+              <span style={{ ...display, fontSize:40 }}>{days[now.getDay()]}</span>
+              <span style={{ ...display, fontSize:40, color:C.gold, marginLeft:8 }}>{now.getDate()}</span>
+              <span style={{ ...mono, fontSize:13, color:C.muted, marginLeft:8, letterSpacing:'0.2em' }}>{months[now.getMonth()]}</span>
             </div>
-          ))}
-          {morningCount === MORNING_STEPS.length && (
-            <div style={{ ...card, borderColor:C.gold, textAlign:'center', marginTop:12 }}>
-              <div style={{ fontSize:14, color:C.gold, fontWeight:700, letterSpacing:'0.15em' }}>MORNING DONE.</div>
-              <div style={{ fontSize:11, color:C.muted, marginTop:4 }}>Go to WORK.</div>
+            {todayShow ? (
+              <div style={{ textAlign:'right' }}>
+                <div style={{ ...mono, fontSize:9, letterSpacing:'0.3em', color:C.gold, marginBottom:3 }}>TONIGHT</div>
+                <div style={{ ...display, fontSize:18 }}>{todayShow.city}</div>
+                {todayShow.venue && todayShow.venue !== 'TBD' && <div style={{ ...mono, fontSize:11, color:C.muted }}>{todayShow.venue}</div>}
+              </div>
+            ) : (
+              <div style={{ textAlign:'right' }}>
+                <div style={{ ...mono, fontSize:9, letterSpacing:'0.3em', color:C.muted, marginBottom:3 }}>NEXT SHOW</div>
+                {nextShows[0] && <div style={{ ...display, fontSize:16 }}>{nextShows[0].city} — {formatDate(nextShows[0].date)}</div>}
+              </div>
+            )}
+          </div>
+
+          {/* STATUS STRIP */}
+          <div style={{ display:'flex', gap:8, marginBottom:16 }}>
+            {[
+              { label:'MORNING', count:morningCount, total:MORNING_STEPS.length, color:C.gold },
+              { label:'BATTLES', count:(opsDone?1:0)+(contentDone?1:0), total:2, color:C.orange },
+              { label:'NIGHT', count:nightCount, total:NIGHT_STEPS.length, color:C.blue },
+            ].map(b => (
+              <div key={b.label} style={{ flex:1, background:C.card, border:`1px solid ${b.count===b.total&&b.total>0?b.color:C.border}`, borderRadius:3, padding:'8px 10px' }}>
+                <div style={{ ...label, marginBottom:3 }}>{b.label}</div>
+                <div style={{ ...display, fontSize:18, color:b.count===b.total&&b.total>0?b.color:C.text }}>{b.count}/{b.total}</div>
+              </div>
+            ))}
+          </div>
+
+          {koShown && (
+            <div style={{ ...card, borderColor:C.gold, textAlign:'center', background:'#14110a', animation:'biPop 0.3s' }}>
+              <div style={{ ...pixel, fontSize:18, color:C.gold }}>DAY KILLED</div>
+              <div style={{ ...mono, fontSize:11, color:C.muted, marginTop:8 }}>Both battles down. {streak} day streak. Boss progress saved — rest up.</div>
             </div>
           )}
-        </>}
 
-        {/* ── WORK ── */}
-        {mode === 'work' && <>
           {twoWeekShow && (
             <div style={{ ...card, borderLeft:`3px solid ${C.orange}` }}>
               <div style={{ ...label, color:C.orange }}>2-WEEK CONTENT TARGET</div>
-              <div style={{ fontSize:14, fontWeight:700 }}>{twoWeekShow.city} — {formatDate(twoWeekShow.date)}</div>
-              <div style={{ fontSize:11, color:C.muted, marginTop:3 }}>Content you make today should target this market.</div>
+              <div style={{ ...display, fontSize:16 }}>{twoWeekShow.city} — {formatDate(twoWeekShow.date)}</div>
+              <div style={{ ...mono, fontSize:11, color:C.muted, marginTop:3 }}>Content you make today should target this market.</div>
             </div>
           )}
 
-          {/* OPS TASK */}
-          <div style={{ ...card, border:`1px solid ${opsDone?C.dim:C.border}`, background:opsDone?'#0a0a0a':C.card, transition:'all 0.3s' }}>
+          <div style={{ ...card, border:`1px solid ${opsDone?C.dim:C.border}`, background:opsDone?'#0a0a0a':C.card }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:12 }}>
               <div>
                 <div style={{ ...label, color:C.gold }}>OPERATIONS</div>
-                <div style={{ fontSize:9, color:C.muted, letterSpacing:'0.2em' }}>1 HR MAX — THEN CLOSE IT</div>
+                <div style={{ ...mono, fontSize:9, color:C.muted, letterSpacing:'0.2em' }}>1 HR MAX — THEN CLOSE IT</div>
               </div>
-              <div style={check(opsDone, C.gold)} onClick={() => setOpsDone(!opsDone)}>
-                {opsDone && <span style={{ fontSize:11, color:'#080808', fontWeight:900 }}>✓</span>}
+              <div style={check(opsDone, C.gold)} onClick={() => { snd(sfxCheck); setOpsDone(!opsDone); }}>
+                {opsDone && <span style={{ fontSize:11, color:'#0D0D0D', fontWeight:900 }}>✓</span>}
               </div>
             </div>
-            <div style={{ fontSize:14, color:opsDone?C.muted:C.text, textDecoration:opsDone?'line-through':'none', lineHeight:1.5 }}>{opsTask}</div>
+            <div style={{ ...mono, fontSize:14, color:opsDone?C.muted:C.text, textDecoration:opsDone?'line-through':'none', lineHeight:1.5 }}>{opsTask}</div>
           </div>
 
-          {/* CONTENT TASK */}
-          <div style={{ ...card, border:`1px solid ${contentDone?C.dim:C.border}`, background:contentDone?'#0a0a0a':C.card, transition:'all 0.3s' }}>
+          <div style={{ ...card, border:`1px solid ${contentDone?C.dim:C.border}`, background:contentDone?'#0a0a0a':C.card }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:12 }}>
               <div>
                 <div style={{ ...label, color:C.orange }}>CONTENT</div>
-                <div style={{ fontSize:9, color:C.muted, letterSpacing:'0.2em' }}>ONE DELIVERABLE — DONE MEANS DONE</div>
+                <div style={{ ...mono, fontSize:9, color:C.muted, letterSpacing:'0.2em' }}>ONE DELIVERABLE — DONE MEANS DONE</div>
               </div>
-              <div style={check(contentDone, C.orange)} onClick={() => setContentDone(!contentDone)}>
-                {contentDone && <span style={{ fontSize:11, color:'#080808', fontWeight:900 }}>✓</span>}
+              <div style={check(contentDone, C.orange)} onClick={() => { snd(sfxCheck); setContentDone(!contentDone); }}>
+                {contentDone && <span style={{ fontSize:11, color:'#0D0D0D', fontWeight:900 }}>✓</span>}
               </div>
             </div>
-            <div style={{ fontSize:14, color:contentDone?C.muted:C.text, textDecoration:contentDone?'line-through':'none', lineHeight:1.5 }}>{contentTask}</div>
+            <div style={{ ...mono, fontSize:14, color:contentDone?C.muted:C.text, textDecoration:contentDone?'line-through':'none', lineHeight:1.5 }}>{contentTask}</div>
           </div>
 
-          {/* RECORD LOCKED */}
           <div style={{ ...card, opacity:0.35 }}>
             <div style={{ display:'flex', justifyContent:'space-between' }}>
-              <div><div style={label}>RECORD</div><div style={{ fontSize:12, color:C.muted, fontStyle:'italic' }}>Not on tour. Protect it.</div></div>
-              <div style={{ fontSize:9, letterSpacing:'0.2em', color:C.dim, alignSelf:'center' }}>LOCKED</div>
+              <div><div style={label}>RECORD</div><div style={{ ...mono, fontSize:12, color:C.muted, fontStyle:'italic' }}>Not on tour. Protect it.</div></div>
+              <div style={{ ...mono, fontSize:9, letterSpacing:'0.2em', color:C.dim, alignSelf:'center' }}>LOCKED</div>
             </div>
           </div>
 
           {workDone && extraTasks.length === 0 && (
             <div style={{ textAlign:'center', padding:'16px 0' }}>
-              <button style={btnFull(C.gold)} onClick={unlockExtra}>UNLOCK MORE TASKS</button>
+              <button style={btnFull(C.gold)} onClick={() => { snd(sfxOpen); unlockExtra(); }}>UNLOCK MORE TASKS</button>
             </div>
           )}
 
@@ -344,11 +497,11 @@ export default function App() {
               <div style={{ ...label, marginBottom:12 }}>BONUS — ONLY IF YOU HAVE ENERGY</div>
               {extraTasks.map((task, i) => (
                 <div key={i} style={{ ...card, background:extraDone[i]?'#0a0a0a':C.card, marginBottom:8 }}>
-                  <div style={{ display:'flex', gap:10, alignItems:'flex-start', cursor:'pointer' }} onClick={() => setExtraDone(p => ({...p,[i]:!p[i]}))}>
+                  <div style={{ display:'flex', gap:10, alignItems:'flex-start', cursor:'pointer' }} onClick={() => { snd(sfxCheck); setExtraDone(p => ({...p,[i]:!p[i]})); }}>
                     <div style={check(extraDone[i], C.muted)}>
-                      {extraDone[i] && <span style={{ fontSize:10, color:'#080808', fontWeight:900 }}>✓</span>}
+                      {extraDone[i] && <span style={{ fontSize:10, color:'#0D0D0D', fontWeight:900 }}>✓</span>}
                     </div>
-                    <div style={{ fontSize:13, color:extraDone[i]?C.muted:C.text, textDecoration:extraDone[i]?'line-through':'none', paddingTop:4, lineHeight:1.5 }}>{task}</div>
+                    <div style={{ ...mono, fontSize:13, color:extraDone[i]?C.muted:C.text, textDecoration:extraDone[i]?'line-through':'none', paddingTop:4, lineHeight:1.5 }}>{task}</div>
                   </div>
                 </div>
               ))}
@@ -356,44 +509,55 @@ export default function App() {
           )}
         </>}
 
-        {/* ── NIGHT ── */}
-        {mode === 'night' && <>
-          {nextShows.length > 0 && (
-            <div style={{ ...card, borderLeft:`3px solid ${C.blue}` }}>
-              <div style={{ ...label, color:C.blue }}>COMING UP</div>
-              {nextShows.map((show, i) => (
-                <div key={i} style={{ display:'flex', justifyContent:'space-between', marginBottom:6, opacity:i===0?1:0.45 }}>
-                  <div style={{ fontSize:i===0?14:12, fontWeight:i===0?700:400 }}>{show.city}{show.venue && show.venue!=='TBD'?` — ${show.venue}`:''}</div>
-                  <div style={{ fontSize:11, color:C.muted }}>{formatDate(show.date)}</div>
+        {/* ══════════ ROUTINES (morning + night + 2am) ══════════ */}
+        {room === 'routines' && <>
+          <div style={{ ...card, borderLeft:`3px solid ${C.gold}` }}>
+            <div style={{ ...label, color:C.gold }}>MORNING PROTOCOL</div>
+            <div style={{ ...mono, fontSize:12, color:C.muted }}>Starts when you start moving. Not at a clock time.</div>
+          </div>
+          {MORNING_STEPS.map(step => (
+            <div key={step.id} style={{ display:'flex', gap:12, alignItems:'flex-start', padding:'14px 0', borderBottom:`1px solid ${C.border}`, opacity:morningDone[step.id]?0.4:1, cursor:'pointer' }}
+              onClick={() => { snd(sfxCheck); setMorningDone(p => ({...p,[step.id]:!p[step.id]})); }}>
+              <div style={check(morningDone[step.id], C.gold)}>
+                {morningDone[step.id] && <span style={{ fontSize:12, color:'#0D0D0D', fontWeight:900 }}>✓</span>}
+              </div>
+              <div style={{ flex:1 }}>
+                <div style={{ display:'flex', gap:8, alignItems:'baseline', marginBottom:4 }}>
+                  <span style={{ ...mono, fontSize:13, fontWeight:700 }}>{step.title}</span>
+                  <span style={{ ...mono, fontSize:10, color:C.muted }}>{step.time}</span>
                 </div>
-              ))}
+                <div style={{ ...mono, fontSize:12, color:C.muted, lineHeight:1.6 }}>{step.desc}</div>
+              </div>
+            </div>
+          ))}
+          {morningCount === MORNING_STEPS.length && (
+            <div style={{ ...card, borderColor:C.gold, textAlign:'center', marginTop:12 }}>
+              <div style={{ ...display, fontSize:16, color:C.gold }}>MORNING DONE.</div>
             </div>
           )}
 
-          <div style={{ ...card, borderLeft:`3px solid ${C.blue}` }}>
+          <div style={{ ...card, borderLeft:`3px solid ${C.blue}`, marginTop:24 }}>
             <div style={{ ...label, color:C.blue }}>NIGHT PROTOCOL</div>
-            <div style={{ fontSize:12, color:C.muted }}>After load out and fans. In this order.</div>
+            <div style={{ ...mono, fontSize:12, color:C.muted }}>After load out and fans. In this order.</div>
           </div>
-
           {NIGHT_STEPS.map(step => (
-            <div key={step.id} style={{ display:'flex', gap:12, alignItems:'flex-start', padding:'14px 0', borderBottom:`1px solid ${C.border}`, opacity:nightDone[step.id]?0.4:1, transition:'opacity 0.3s', cursor:'pointer' }}
-              onClick={() => setNightDone(p => ({...p,[step.id]:!p[step.id]}))}>
+            <div key={step.id} style={{ display:'flex', gap:12, alignItems:'flex-start', padding:'14px 0', borderBottom:`1px solid ${C.border}`, opacity:nightDone[step.id]?0.4:1, cursor:'pointer' }}
+              onClick={() => { snd(sfxCheck); setNightDone(p => ({...p,[step.id]:!p[step.id]})); }}>
               <div style={check(nightDone[step.id], C.blue)}>
-                {nightDone[step.id] && <span style={{ fontSize:12, color:'#080808', fontWeight:900 }}>✓</span>}
+                {nightDone[step.id] && <span style={{ fontSize:12, color:'#0D0D0D', fontWeight:900 }}>✓</span>}
               </div>
               <div style={{ flex:1 }}>
-                <div style={{ fontSize:13, fontWeight:700, marginBottom:4 }}>{step.title}</div>
-                <div style={{ fontSize:12, color:C.muted, lineHeight:1.6 }}>{step.desc}</div>
+                <div style={{ ...mono, fontSize:13, fontWeight:700, marginBottom:4 }}>{step.title}</div>
+                <div style={{ ...mono, fontSize:12, color:C.muted, lineHeight:1.6 }}>{step.desc}</div>
               </div>
             </div>
           ))}
 
           <div style={{ marginTop:16 }}>
-            <button style={{ ...btnOut(C.red), width:'100%', padding:14 }} onClick={() => setShowCrisis(!showCrisis)}>
+            <button style={{ ...btnOut(C.red), width:'100%', padding:14 }} onClick={() => { snd(sfxTap); setShowCrisis(!showCrisis); }}>
               {showCrisis ? '▲ CLOSE 2AM PROTOCOL' : '2AM PROTOCOL'}
             </button>
           </div>
-
           {showCrisis && (
             <div style={{ ...card, borderColor:C.red, marginTop:8 }}>
               <div style={{ ...label, color:C.red }}>IF YOU WAKE AT 2AM</div>
@@ -404,10 +568,10 @@ export default function App() {
                     {crisisDone[step.id] && <span style={{ fontSize:11, color:'#fff', fontWeight:900 }}>✓</span>}
                   </div>
                   <div style={{ flex:1 }}>
-                    <div style={{ fontSize:13, fontWeight:700, color:step.crisis?C.red:C.text, marginBottom:3 }}>{step.title}</div>
-                    <div style={{ fontSize:12, color:C.muted, lineHeight:1.5 }}>{step.desc}</div>
+                    <div style={{ ...mono, fontSize:13, fontWeight:700, color:step.crisis?C.red:C.text, marginBottom:3 }}>{step.title}</div>
+                    <div style={{ ...mono, fontSize:12, color:C.muted, lineHeight:1.5 }}>{step.desc}</div>
                     {step.crisis && (
-                      <a href="sms:988" style={{ display:'inline-block', marginTop:10, padding:'10px 18px', background:C.red, color:'#fff', fontSize:10, letterSpacing:'0.25em', fontWeight:700, borderRadius:3, textDecoration:'none', ...base }}>
+                      <a href="sms:988" style={{ display:'inline-block', marginTop:10, padding:'10px 18px', background:C.red, color:'#fff', fontSize:10, letterSpacing:'0.25em', fontWeight:700, borderRadius:3, textDecoration:'none', ...mono }}>
                         TEXT 988 NOW
                       </a>
                     )}
@@ -418,123 +582,77 @@ export default function App() {
           )}
         </>}
 
-        {/* ── VISION ── */}
-        {mode === 'vision' && <>
-          <div style={{ ...card, borderLeft:`3px solid ${C.gold}`, marginBottom:20 }}>
+        {/* ══════════ GOALS (boss) ══════════ */}
+        {room === 'goals' && <>
+          <div style={{ ...card, borderLeft:`3px solid ${C.red}`, marginBottom:18 }}>
+            <div style={{ ...label, color:C.red }}>THE BOSS — 150K FOLLOWERS</div>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginTop:8, marginBottom:8 }}>
+              <span style={{ ...display, fontSize:28, color:C.gold }}>{FOLLOWERS_NOW.toLocaleString()}</span>
+              <span style={{ ...mono, fontSize:12, color:C.muted }}>/ {FOLLOWER_GOAL.toLocaleString()}</span>
+            </div>
+            <div style={{ background:'#0a0a0a', border:`1px solid ${C.border}`, borderRadius:3, height:18, overflow:'hidden' }}>
+              <div style={{ height:'100%', width:`${Math.max((FOLLOWERS_NOW/FOLLOWER_GOAL)*100,2)}%`, background:`linear-gradient(90deg, ${C.red}, ${C.gold})` }} />
+            </div>
+            <div style={{ ...mono, fontSize:11, color:C.muted, marginTop:8 }}>
+              {Math.round((FOLLOWERS_NOW/FOLLOWER_GOAL)*100)}% chipped down. {(FOLLOWER_GOAL-FOLLOWERS_NOW).toLocaleString()} health left on the boss.
+            </div>
+            <div style={{ ...mono, fontSize:10, color:C.dim, marginTop:8, fontStyle:'italic' }}>Update the count as you grow — boss health only ever goes down.</div>
+          </div>
+
+          <div style={{ ...card, borderLeft:`3px solid ${C.gold}` }}>
             <div style={{ ...label, color:C.gold }}>THE MISSION</div>
-            <div style={{ fontSize:13, color:C.muted, lineHeight:1.7, fontStyle:'italic' }}>"Protecting each other because the government won't."</div>
+            <div style={{ ...mono, fontSize:13, color:C.muted, lineHeight:1.7, fontStyle:'italic' }}>"Protecting each other because the government won't."</div>
           </div>
 
           {VISION.map((v, i) => (
-            <div key={i} style={{ ...card, borderLeft:`3px solid ${v.color}`, marginBottom:10 }}>
+            <div key={i} style={{ ...card, borderLeft:`3px solid ${v.color}` }}>
               <div style={{ ...label, color:v.color }}>{v.year}</div>
               {v.items.map((item, j) => (
                 <div key={j} style={{ display:'flex', gap:8, marginBottom:6 }}>
                   <span style={{ color:v.color, flexShrink:0 }}>→</span>
-                  <span style={{ fontSize:13, color:C.muted, lineHeight:1.5 }}>{item}</span>
+                  <span style={{ ...mono, fontSize:13, color:C.muted, lineHeight:1.5 }}>{item}</span>
                 </div>
               ))}
             </div>
           ))}
-
-          <div style={{ ...card, marginTop:8 }}>
-            <div style={{ ...label, marginBottom:12 }}>FULL TOUR — {TOUR.filter(s=>s.city!=='OFF').length} SHOWS</div>
-            {TOUR.map((show, i) => {
-              const d = daysUntil(show.date);
-              const isPast = d < 0;
-              const isToday = d === 0;
-              return (
-                <div key={i} style={{ display:'flex', justifyContent:'space-between', padding:'5px 0', borderBottom:`1px solid ${C.border}`, opacity:isPast?0.25:1 }}>
-                  <div style={{ fontSize:12, color:isToday?C.gold:show.city==='OFF'?C.dim:C.text, fontWeight:isToday?700:400 }}>
-                    {show.city==='OFF' ? '— OFF —' : show.city}
-                    {show.country && show.city!=='OFF' && <span style={{ fontSize:10, color:C.muted, marginLeft:6 }}>{show.country}</span>}
-                  </div>
-                  <div style={{ fontSize:11, color:isToday?C.gold:C.muted }}>
-                    {isToday?'TONIGHT':formatDate(show.date)}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
         </>}
 
-        {/* ── BUMPERS ── */}
-        {mode === 'bumpers' && <>
-          <div style={{ ...card, borderLeft:`3px solid ${C.orange}` }}>
-            <div style={{ ...label, color:C.orange }}>RADIO BUMPERS</div>
-            <div style={{ fontSize:12, color:C.muted, lineHeight:1.6 }}>One quiet recording session. All cities. Send with every radio email.</div>
-          </div>
-
-          <div style={{ ...label, marginBottom:10 }}>SELECT CITY</div>
-          <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:20 }}>
-            {TOUR.filter(s => s.radio && s.city !== 'OFF').map((show, i) => (
-              <button key={i}
-                style={{ ...base, padding:'6px 12px', borderRadius:3, border:`1px solid ${bumperCity?.city===show.city?C.orange:C.border}`, background:bumperCity?.city===show.city?C.orange:'transparent', color:bumperCity?.city===show.city?'#080808':C.muted, fontSize:10, letterSpacing:'0.2em', cursor:'pointer' }}
-                onClick={() => { setBumperCity(show); setBumperVer(0); }}
-              >{show.city}</button>
-            ))}
-          </div>
-
-          {bumperCity && (
-            <div style={card}>
-              <div style={{ ...label, color:C.orange }}>{bumperCity.city.toUpperCase()} — {bumperCity.radio}</div>
-              <div style={{ display:'flex', gap:6, marginBottom:14 }}>
-                {[0,1,2].map(v => (
-                  <button key={v} style={{ ...base, padding:'5px 10px', borderRadius:3, border:`1px solid ${bumperVer===v?C.gold:C.border}`, background:bumperVer===v?C.gold:'transparent', color:bumperVer===v?'#080808':C.muted, fontSize:10, cursor:'pointer' }} onClick={() => setBumperVer(v)}>V{v+1}</button>
-                ))}
-              </div>
-              <div style={{ background:'#0a0a0a', border:`1px solid ${C.border}`, borderRadius:3, padding:14, fontSize:13, lineHeight:1.7, color:C.text, fontStyle:'italic', marginBottom:12 }}>
-                "{BUMPER_TEMPLATES[bumperVer](bumperCity.city, bumperCity.radio, bumperCity.venue!=='TBD'?bumperCity.venue:'the venue', formatDate(bumperCity.date))}"
-              </div>
-              <button style={btnFull(C.gold)} onClick={() => copyText(BUMPER_TEMPLATES[bumperVer](bumperCity.city, bumperCity.radio, bumperCity.venue!=='TBD'?bumperCity.venue:'the venue', formatDate(bumperCity.date)), 'bumper')}>
-                {copied==='bumper'?'COPIED ✓':'COPY SCRIPT'}
-              </button>
-              <div style={{ marginTop:12, fontSize:11, color:C.muted, borderLeft:`2px solid ${C.border}`, paddingLeft:10 }}>
-                Send to: {bumperCity.radioEmail}
-              </div>
-            </div>
-          )}
-
-          {!bumperCity && <div style={{ fontSize:12, color:C.muted, fontStyle:'italic' }}>Select a city above.</div>}
-        </>}
-
-        {/* ── OUTREACH ── */}
-        {mode === 'outreach' && <>
+        {/* ══════════ MUSICIAN'S POCKET (tour + bumpers + outreach) ══════════ */}
+        {room === 'pocket' && <>
+          {/* OUTREACH */}
           <div style={{ ...card, borderLeft:`3px solid ${C.gold}` }}>
             <div style={{ ...label, color:C.gold }}>OUTREACH RULE</div>
-            <div style={{ fontSize:12, color:C.muted, lineHeight:1.6 }}>Every city you play in 14 days gets outreach today. Promoter first. Then radio. Then press.</div>
+            <div style={{ ...mono, fontSize:12, color:C.muted, lineHeight:1.6 }}>Every city you play in 14 days gets outreach today. Promoter first. Then radio. Then press.</div>
           </div>
-
           <div style={{ ...label, marginBottom:10 }}>NEEDS OUTREACH NOW</div>
           {TOUR.filter(s => s.city!=='OFF' && daysUntil(s.date) > 0 && daysUntil(s.date) <= 21).map((show, i) => (
             <div key={i} style={card}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:10 }}>
                 <div>
-                  <div style={{ fontSize:15, fontWeight:700 }}>{show.city}</div>
-                  <div style={{ fontSize:11, color:C.muted }}>{formatDate(show.date)} · {show.venue && show.venue!=='TBD'?show.venue:'venue TBD'}</div>
+                  <div style={{ ...display, fontSize:18 }}>{show.city}</div>
+                  <div style={{ ...mono, fontSize:11, color:C.muted }}>{formatDate(show.date)} · {show.venue && show.venue!=='TBD'?show.venue:'venue TBD'}</div>
                 </div>
-                <div style={{ fontSize:11, color:daysUntil(show.date)<=7?C.red:C.orange, fontWeight:700 }}>{daysUntil(show.date)}D</div>
+                <div style={{ ...mono, fontSize:11, color:daysUntil(show.date)<=7?C.red:C.orange, fontWeight:700 }}>{daysUntil(show.date)}D</div>
               </div>
               <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
                 {['PROMOTER','RADIO','PRESS','LOCAL BAND'].map(type => (
-                  <div key={type} style={{ fontSize:9, letterSpacing:'0.15em', padding:'3px 8px', border:`1px solid ${C.border}`, borderRadius:2, color:C.muted }}>{type}</div>
+                  <div key={type} style={{ ...mono, fontSize:9, letterSpacing:'0.15em', padding:'3px 8px', border:`1px solid ${C.border}`, borderRadius:2, color:C.muted }}>{type}</div>
                 ))}
               </div>
               {show.radio && (
-                <div style={{ marginTop:10, fontSize:11, color:C.muted, borderTop:`1px solid ${C.border}`, paddingTop:8 }}>
+                <div style={{ ...mono, marginTop:10, fontSize:11, color:C.muted, borderTop:`1px solid ${C.border}`, paddingTop:8 }}>
                   Radio: {show.radio} — {show.radioEmail}
                 </div>
               )}
             </div>
           ))}
-
           {TOUR.filter(s => s.city!=='OFF' && daysUntil(s.date) > 0 && daysUntil(s.date) <= 21).length === 0 && (
-            <div style={{ fontSize:12, color:C.muted, fontStyle:'italic', paddingBottom:16 }}>No shows in the next 21 days.</div>
+            <div style={{ ...mono, fontSize:12, color:C.muted, fontStyle:'italic', paddingBottom:8 }}>No shows in the next 21 days.</div>
           )}
 
           <div style={{ ...label, marginBottom:10, marginTop:20 }}>PROMOTER TEMPLATE</div>
           <div style={card}>
-            <div style={{ background:'#0a0a0a', border:`1px solid ${C.border}`, borderRadius:3, padding:14, fontSize:13, lineHeight:1.8, color:C.text, whiteSpace:'pre-wrap', marginBottom:12 }}>
+            <div style={{ ...mono, background:'#0a0a0a', border:`1px solid ${C.border}`, borderRadius:3, padding:14, fontSize:13, lineHeight:1.8, color:C.text, whiteSpace:'pre-wrap', marginBottom:12 }}>
 {`Hey [name],
 
 Here's where I'm at on my end for [city] on [date]:
@@ -549,9 +667,84 @@ Denz — The OBGMs`}
               {copied==='promo'?'COPIED ✓':'COPY TEMPLATE'}
             </button>
           </div>
+
+          {/* BUMPERS */}
+          <div style={{ ...card, borderLeft:`3px solid ${C.orange}`, marginTop:24 }}>
+            <div style={{ ...label, color:C.orange }}>RADIO BUMPERS</div>
+            <div style={{ ...mono, fontSize:12, color:C.muted, lineHeight:1.6 }}>One quiet recording session. All cities. Send with every radio email.</div>
+          </div>
+          <div style={{ ...label, marginBottom:10 }}>SELECT CITY</div>
+          <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:16 }}>
+            {TOUR.filter(s => s.radio && s.city !== 'OFF').map((show, i) => (
+              <button key={i}
+                style={{ ...mono, padding:'6px 12px', borderRadius:3, border:`1px solid ${bumperCity?.city===show.city?C.orange:C.border}`, background:bumperCity?.city===show.city?C.orange:'transparent', color:bumperCity?.city===show.city?'#0D0D0D':C.muted, fontSize:10, letterSpacing:'0.2em', cursor:'pointer' }}
+                onClick={() => { snd(sfxTap); setBumperCity(show); setBumperVer(0); }}
+              >{show.city}</button>
+            ))}
+          </div>
+          {bumperCity && (
+            <div style={card}>
+              <div style={{ ...label, color:C.orange }}>{bumperCity.city.toUpperCase()} — {bumperCity.radio}</div>
+              <div style={{ display:'flex', gap:6, marginBottom:14 }}>
+                {[0,1,2].map(v => (
+                  <button key={v} style={{ ...mono, padding:'5px 10px', borderRadius:3, border:`1px solid ${bumperVer===v?C.gold:C.border}`, background:bumperVer===v?C.gold:'transparent', color:bumperVer===v?'#0D0D0D':C.muted, fontSize:10, cursor:'pointer' }} onClick={() => setBumperVer(v)}>V{v+1}</button>
+                ))}
+              </div>
+              <div style={{ ...mono, background:'#0a0a0a', border:`1px solid ${C.border}`, borderRadius:3, padding:14, fontSize:13, lineHeight:1.7, color:C.text, fontStyle:'italic', marginBottom:12 }}>
+                "{BUMPER_TEMPLATES[bumperVer](bumperCity.city, bumperCity.radio, bumperCity.venue!=='TBD'?bumperCity.venue:'the venue', formatDate(bumperCity.date))}"
+              </div>
+              <button style={btnFull(C.gold)} onClick={() => copyText(BUMPER_TEMPLATES[bumperVer](bumperCity.city, bumperCity.radio, bumperCity.venue!=='TBD'?bumperCity.venue:'the venue', formatDate(bumperCity.date)), 'bumper')}>
+                {copied==='bumper'?'COPIED ✓':'COPY SCRIPT'}
+              </button>
+              <div style={{ ...mono, marginTop:12, fontSize:11, color:C.muted, borderLeft:`2px solid ${C.border}`, paddingLeft:10 }}>
+                Send to: {bumperCity.radioEmail}
+              </div>
+            </div>
+          )}
+
+          {/* FULL TOUR */}
+          <div style={{ ...card, marginTop:24 }}>
+            <div style={{ ...label, marginBottom:12 }}>FULL TOUR — {TOUR.filter(s=>s.city!=='OFF').length} SHOWS</div>
+            {TOUR.map((show, i) => {
+              const d = daysUntil(show.date);
+              const isPast = d < 0;
+              const isToday = d === 0;
+              return (
+                <div key={i} style={{ display:'flex', justifyContent:'space-between', padding:'5px 0', borderBottom:`1px solid ${C.border}`, opacity:isPast?0.25:1 }}>
+                  <div style={{ ...mono, fontSize:12, color:isToday?C.gold:show.city==='OFF'?C.dim:C.text, fontWeight:isToday?700:400 }}>
+                    {show.city==='OFF' ? '— OFF —' : show.city}
+                    {show.country && show.city!=='OFF' && <span style={{ fontSize:10, color:C.muted, marginLeft:6 }}>{show.country}</span>}
+                  </div>
+                  <div style={{ ...mono, fontSize:11, color:isToday?C.gold:C.muted }}>
+                    {isToday?'TONIGHT':formatDate(show.date)}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>}
+
+        {/* ══════════ MONEY ══════════ */}
+        {room === 'money' && <>
+          <div style={{ ...card, borderLeft:`3px solid ${C.gold}` }}>
+            <div style={{ ...label, color:C.gold }}>THE WAR CHEST</div>
+            <div style={{ ...mono, fontSize:12, color:C.muted, lineHeight:1.6 }}>Guarantees, expenses, debt, runway. This room comes online once we wire in real numbers — guarantees per show, merch margins, what's owed.</div>
+          </div>
+          <div style={{ ...card, opacity:0.5, textAlign:'center', padding:'32px 16px' }}>
+            <div style={{ ...pixel, fontSize:12, color:C.dim }}>COMING ONLINE</div>
+            <div style={{ ...mono, fontSize:11, color:C.muted, marginTop:10 }}>Tell me what you want to track first — guarantees, outstanding invoices, or a tour P&amp;L — and I'll build it.</div>
+          </div>
         </>}
 
       </div>
     </div>
   );
 }
+
+const keyframes = `
+@import url('https://fonts.googleapis.com/css2?family=Anton&family=Press+Start+2P&family=Space+Mono:wght@400;700&display=swap');
+@keyframes biShake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-8px)} 40%{transform:translateX(8px)} 60%{transform:translateX(-5px)} 80%{transform:translateX(5px)} }
+@keyframes biBlink { 0%,50%{opacity:1} 51%,100%{opacity:0.25} }
+@keyframes biSlideIn { from{transform:translateX(-100%)} to{transform:translateX(0)} }
+@keyframes biPop { from{transform:scale(0.9);opacity:0} to{transform:scale(1);opacity:1} }
+`;
