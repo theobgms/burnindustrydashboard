@@ -256,7 +256,7 @@ function stopMusic() {
 
 const C = { bg:'#0D0D0D', card:'#111', border:'#1e1e1e', gold:'#FFD60A', orange:'#ff6b35', red:'#D91F26', blue:'#7eb8f7', text:'#F2F2F2', muted:'#666', dim:'#2a2a2a' };
 const ROOMS = [
-  { key:'today',    label:'TODAY',            sub:'Your daily battles',        color:C.gold },
+  { key:'today',    label:"LET'S WORK",       sub:'Master list · battles · energy', color:C.gold },
   { key:'routines', label:'ROUTINES',         sub:'Morning · Night · 2AM',     color:C.blue },
   { key:'journal',  label:'JOURNAL',          sub:'Your sentences, by day',    color:C.text },
   { key:'goals',    label:'GOALS',            sub:'The boss — 150K',           color:C.red },
@@ -276,10 +276,15 @@ export default function App() {
   const [morningDone, setMorningDone] = useState({});
   const [nightDone, setNightDone] = useState({});
   const [crisisDone, setCrisisDone] = useState({});
-  const [opsDone, setOpsDone] = useState(false);
-  const [contentDone, setContentDone] = useState(false);
-  const [extraTasks, setExtraTasks] = useState([]);
-  const [extraDone, setExtraDone] = useState({});
+  const [master, setMaster] = useState([]);        // persistent backlog: {id, text, energy, priority}
+  const [battleSlots, setBattleSlots] = useState([null, null, null]); // task ids in the 3 slots (per day)
+  const [battleDone, setBattleDone] = useState({}); // {taskId: true} done today
+  const [unplanned, setUnplanned] = useState([]);   // [{text, energy}] logged today
+  const [newTask, setNewTask] = useState('');
+  const [newEnergy, setNewEnergy] = useState(2);
+  const [newPriority, setNewPriority] = useState(2);
+  const [unpText, setUnpText] = useState('');
+  const [unpEnergy, setUnpEnergy] = useState(1);
   const [bumperCity, setBumperCity] = useState(null);
   const [bumperVer, setBumperVer] = useState(0);
   const [copied, setCopied] = useState('');
@@ -295,12 +300,11 @@ export default function App() {
   const [pnl, setPnl] = useState({});
   const [pocketTab, setPocketTab] = useState('advance');
 
+  const ENERGY_TARGET = 10;
   const today = todayStr();
   const todayShow = getShowForDate(today);
   const nextShows = getNextShows(3);
   const twoWeekShow = getTwoWeekShow();
-  const opsTask = getDailyTask(OPS_TASKS, 0);
-  const contentTask = getDailyTask(CONTENT_TASKS, 5);
 
   const snd = (fn) => { if (sound) fn(); };
 
@@ -309,11 +313,12 @@ export default function App() {
       const saved = JSON.parse(localStorage.getItem('bi_dash_' + today) || '{}');
       if (saved.morningDone) setMorningDone(saved.morningDone);
       if (saved.nightDone) setNightDone(saved.nightDone);
-      if (saved.opsDone) setOpsDone(saved.opsDone);
-      if (saved.contentDone) setContentDone(saved.contentDone);
-      if (saved.extraTasks) setExtraTasks(saved.extraTasks);
-      if (saved.extraDone) setExtraDone(saved.extraDone);
+      if (saved.battleSlots) setBattleSlots(saved.battleSlots);
+      if (saved.battleDone) setBattleDone(saved.battleDone);
+      if (saved.unplanned) setUnplanned(saved.unplanned);
       if (saved.koShown) setKoShown(saved.koShown);
+      const ml = JSON.parse(localStorage.getItem('bi_master') || 'null');
+      if (Array.isArray(ml)) setMaster(ml);
       const st = JSON.parse(localStorage.getItem('bi_streak') || '{}');
       if (typeof st.count === 'number') setStreak(st.count);
       const pref = JSON.parse(localStorage.getItem('bi_prefs') || '{}');
@@ -334,9 +339,14 @@ export default function App() {
   useEffect(() => {
     if (!loaded) return;
     try {
-      localStorage.setItem('bi_dash_' + today, JSON.stringify({ morningDone, nightDone, opsDone, contentDone, extraTasks, extraDone, koShown }));
+      localStorage.setItem('bi_dash_' + today, JSON.stringify({ morningDone, nightDone, battleSlots, battleDone, unplanned, koShown }));
     } catch(e) {}
-  }, [morningDone, nightDone, opsDone, contentDone, extraTasks, extraDone, koShown, loaded]);
+  }, [morningDone, nightDone, battleSlots, battleDone, unplanned, koShown, loaded]);
+
+  useEffect(() => {
+    if (!loaded) return;
+    try { localStorage.setItem('bi_master', JSON.stringify(master)); } catch(e) {}
+  }, [master, loaded]);
 
   useEffect(() => {
     if (!loaded) return;
@@ -402,14 +412,29 @@ export default function App() {
 
   const morningCount = Object.values(morningDone).filter(Boolean).length;
   const nightCount = Object.values(nightDone).filter(Boolean).length;
-  const workDone = opsDone && contentDone;
 
   // full-day progress: morning + both battles + night
-  const totalTasks = MORNING_STEPS.length + 2 + NIGHT_STEPS.length;
-  const doneTasks = morningCount + (opsDone?1:0) + (contentDone?1:0) + nightCount;
-  const dayComplete = morningCount === MORNING_STEPS.length && opsDone && contentDone && nightCount === NIGHT_STEPS.length;
+  // ── Energy + battle derivation ──
+  const masterSorted = [...master].sort((a, b) => (b.priority - a.priority) || (a.id - b.id));
+  // auto-fill battle slots: keep manually-set ones, fill blanks with top-priority unused tasks
+  const slotIds = battleSlots.filter(Boolean);
+  const available = masterSorted.filter(t => !slotIds.includes(t.id) && !battleDone[t.id]);
+  let fillIdx = 0;
+  const filledSlots = battleSlots.map(id => {
+    if (id && master.find(t => t.id === id)) return id;
+    while (fillIdx < available.length && (slotIds.includes(available[fillIdx].id))) fillIdx++;
+    const next = available[fillIdx++];
+    return next ? next.id : null;
+  });
+  const battleTasks = filledSlots.map(id => master.find(t => t.id === id) || null);
 
-  // KO + streak when the WHOLE day is done
+  const battleEnergy = master.filter(t => battleDone[t.id]).reduce((a, t) => a + (t.energy || 0), 0);
+  const unplannedEnergy = unplanned.reduce((a, u) => a + (u.energy || 0), 0);
+  const energyBanked = battleEnergy + unplannedEnergy;
+  const energyPct = Math.min(100, (energyBanked / ENERGY_TARGET) * 100);
+  const dayComplete = energyBanked >= ENERGY_TARGET;
+
+  // KO + streak when energy target hit
   useEffect(() => {
     if (dayComplete && !koShown && loaded) {
       setKoShown(true);
@@ -425,12 +450,53 @@ export default function App() {
     }
   }, [dayComplete, koShown, loaded]);
 
-  function unlockExtra() {
-    const remaining = [...OPS_TASKS, ...CONTENT_TASKS]
-      .filter(t => t !== opsTask && t !== contentTask)
-      .sort(() => Math.random() - 0.5)
-      .slice(0, 6);
-    setExtraTasks(remaining);
+  // ── Master list + battle helpers ──
+  function addMasterTask() {
+    const text = newTask.trim();
+    if (!text) return;
+    snd(sfxTap);
+    setMaster(m => [...m, { id: Date.now(), text, energy: newEnergy, priority: newPriority }]);
+    setNewTask('');
+    setNewEnergy(2);
+    setNewPriority(2);
+  }
+  function removeMasterTask(id) {
+    setMaster(m => m.filter(t => t.id !== id));
+    setBattleSlots(s => s.map(x => x === id ? null : x));
+  }
+  function setTaskPriority(id, p) {
+    setMaster(m => m.map(t => t.id === id ? { ...t, priority: p } : t));
+  }
+  function completeBattle(id) {
+    snd(sfxCheck);
+    setBattleDone(d => ({ ...d, [id]: true }));
+    setBattleSlots(s => s.map(x => x === id ? null : x)); // free the slot, next priority fills in
+    setMaster(m => m.filter(t => t.id !== id));           // done = leaves the backlog
+  }
+  function swapBattleOut(id) {
+    snd(sfxTap);
+    setBattleSlots(s => s.map(x => x === id ? null : x)); // returns to master (still in master[])
+  }
+  function promoteToBattle(id) {
+    // put this task into the first open/auto slot
+    setBattleSlots(s => {
+      const copy = [...s];
+      const openIdx = copy.findIndex(x => !x || !master.find(t => t.id === x));
+      copy[openIdx === -1 ? 0 : openIdx] = id;
+      return copy;
+    });
+    snd(sfxTap);
+  }
+  function logUnplanned() {
+    const text = unpText.trim();
+    if (!text) return;
+    snd(sfxCheck);
+    setUnplanned(u => [...u, { text, energy: unpEnergy, t: Date.now() }]);
+    setUnpText('');
+    setUnpEnergy(1);
+  }
+  function removeUnplanned(i) {
+    setUnplanned(u => u.filter((_, idx) => idx !== i));
   }
 
   function copyText(text, key) {
@@ -572,96 +638,151 @@ export default function App() {
           <div style={{ display:'flex', gap:8, marginBottom:16 }}>
             {[
               { label:'MORNING', count:morningCount, total:MORNING_STEPS.length, color:C.gold },
-              { label:'BATTLES', count:(opsDone?1:0)+(contentDone?1:0), total:2, color:C.orange },
+              { label:'ENERGY', count:energyBanked, total:ENERGY_TARGET, color:C.orange },
               { label:'NIGHT', count:nightCount, total:NIGHT_STEPS.length, color:C.blue },
             ].map(b => (
-              <div key={b.label} style={{ flex:1, background:C.card, border:`1px solid ${b.count===b.total&&b.total>0?b.color:C.border}`, borderRadius:3, padding:'8px 10px' }}>
+              <div key={b.label} style={{ flex:1, background:C.card, border:`1px solid ${b.count>=b.total&&b.total>0?b.color:C.border}`, borderRadius:3, padding:'8px 10px' }}>
                 <div style={{ ...label, marginBottom:3 }}>{b.label}</div>
-                <div style={{ ...display, fontSize:18, color:b.count===b.total&&b.total>0?b.color:C.text }}>{b.count}/{b.total}</div>
+                <div style={{ ...display, fontSize:18, color:b.count>=b.total&&b.total>0?b.color:C.text }}>{b.count}/{b.total}</div>
               </div>
             ))}
           </div>
 
-          {/* DAY PROGRESS — fills as the whole day gets done */}
+          {/* DAILY ENERGY */}
           <div style={{ ...card }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:8 }}>
-              <div style={{ ...label, color:dayComplete?C.gold:C.muted }}>DAY PROGRESS</div>
+              <div style={{ ...label, color:dayComplete?C.gold:C.muted }}>DAILY ENERGY</div>
               <div style={{ ...mono, fontSize:11, color:C.muted }}>
-                {doneTasks}/{totalTasks}{streak > 0 ? ` · ${streak} day streak` : ''}
+                {energyBanked}/{ENERGY_TARGET} pts{streak > 0 ? ` · ${streak} day streak` : ''}
               </div>
             </div>
             <div style={{ background:'#0a0a0a', border:`1px solid ${C.border}`, borderRadius:3, height:16, overflow:'hidden' }}>
-              <div style={{ height:'100%', width:`${(doneTasks/totalTasks)*100}%`, background:dayComplete?C.gold:`linear-gradient(90deg, ${C.red}, ${C.gold})`, transition:'width 0.4s' }} />
+              <div style={{ height:'100%', width:`${energyPct}%`, background:dayComplete?C.gold:`linear-gradient(90deg, ${C.red}, ${C.gold})`, transition:'width 0.4s' }} />
             </div>
+            <div style={{ ...mono, fontSize:10, color:C.muted, marginTop:8, lineHeight:1.5 }}>Battles + unplanned work bank points. Hit {ENERGY_TARGET} and the day's won — however you got there.</div>
           </div>
 
           {koShown && (
             <div style={{ ...card, borderColor:C.gold, textAlign:'center', background:'#14110a', animation:'biPop 0.3s' }}>
               <div style={{ ...pixel, fontSize:18, color:C.gold }}>DAY KILLED</div>
-              <div style={{ ...mono, fontSize:11, color:C.muted, marginTop:8 }}>Morning, both battles, night — all down. {streak} day streak. Rest up.</div>
+              <div style={{ ...mono, fontSize:11, color:C.muted, marginTop:8 }}>{ENERGY_TARGET} energy banked. {streak} day streak. Rest up.</div>
             </div>
           )}
 
-          {twoWeekShow && (
-            <div style={{ ...card, borderLeft:`3px solid ${C.orange}` }}>
-              <div style={{ ...label, color:C.orange }}>2-WEEK CONTENT TARGET</div>
-              <div style={{ ...display, fontSize:16 }}>{twoWeekShow.city} — {formatDate(twoWeekShow.date)}</div>
-              <div style={{ ...mono, fontSize:11, color:C.muted, marginTop:3 }}>Content you make today should target this market.</div>
-            </div>
-          )}
-
-          <div style={{ ...card, border:`1px solid ${opsDone?C.dim:C.border}`, background:opsDone?'#0a0a0a':C.card }}>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:12 }}>
-              <div>
-                <div style={{ ...label, color:C.gold }}>OPERATIONS</div>
-                <div style={{ ...mono, fontSize:9, color:C.muted, letterSpacing:'0.2em' }}>1 HR MAX — THEN CLOSE IT</div>
-              </div>
-              <div style={check(opsDone, C.gold)} onClick={() => { snd(sfxCheck); setOpsDone(!opsDone); }}>
-                {opsDone && <span style={{ fontSize:11, color:'#0D0D0D', fontWeight:900 }}>✓</span>}
-              </div>
-            </div>
-            <div style={{ ...mono, fontSize:14, color:opsDone?C.muted:C.text, textDecoration:opsDone?'line-through':'none', lineHeight:1.5 }}>{opsTask}</div>
+          {/* TODAY'S BATTLES — top 3 from master list */}
+          <div style={{ ...card, borderLeft:`3px solid ${C.orange}` }}>
+            <div style={{ ...label, color:C.orange }}>TODAY'S BATTLES</div>
+            <div style={{ ...mono, fontSize:11, color:C.muted, lineHeight:1.6 }}>The 3 things you're fighting today. Top priority auto-fills. Swap one back if it's not the move.</div>
           </div>
 
-          <div style={{ ...card, border:`1px solid ${contentDone?C.dim:C.border}`, background:contentDone?'#0a0a0a':C.card }}>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:12 }}>
-              <div>
-                <div style={{ ...label, color:C.orange }}>CONTENT</div>
-                <div style={{ ...mono, fontSize:9, color:C.muted, letterSpacing:'0.2em' }}>ONE DELIVERABLE — DONE MEANS DONE</div>
-              </div>
-              <div style={check(contentDone, C.orange)} onClick={() => { snd(sfxCheck); setContentDone(!contentDone); }}>
-                {contentDone && <span style={{ fontSize:11, color:'#0D0D0D', fontWeight:900 }}>✓</span>}
-              </div>
-            </div>
-            <div style={{ ...mono, fontSize:14, color:contentDone?C.muted:C.text, textDecoration:contentDone?'line-through':'none', lineHeight:1.5 }}>{contentTask}</div>
-          </div>
-
-          <div style={{ ...card, opacity:0.35 }}>
-            <div style={{ display:'flex', justifyContent:'space-between' }}>
-              <div><div style={label}>RECORD</div><div style={{ ...mono, fontSize:12, color:C.muted, fontStyle:'italic' }}>Not on tour. Protect it.</div></div>
-              <div style={{ ...mono, fontSize:9, letterSpacing:'0.2em', color:C.dim, alignSelf:'center' }}>LOCKED</div>
-            </div>
-          </div>
-
-          {workDone && extraTasks.length === 0 && (
-            <div style={{ textAlign:'center', padding:'16px 0' }}>
-              <button style={btnFull(C.gold)} onClick={() => { snd(sfxOpen); unlockExtra(); }}>UNLOCK MORE TASKS</button>
-            </div>
-          )}
-
-          {extraTasks.length > 0 && (
-            <div style={{ marginTop:16 }}>
-              <div style={{ ...label, marginBottom:12 }}>BONUS — ONLY IF YOU HAVE ENERGY</div>
-              {extraTasks.map((task, i) => (
-                <div key={i} style={{ ...card, background:extraDone[i]?'#0a0a0a':C.card, marginBottom:8 }}>
-                  <div style={{ display:'flex', gap:10, alignItems:'flex-start', cursor:'pointer' }} onClick={() => { snd(sfxCheck); setExtraDone(p => ({...p,[i]:!p[i]})); }}>
-                    <div style={check(extraDone[i], C.muted)}>
-                      {extraDone[i] && <span style={{ fontSize:10, color:'#0D0D0D', fontWeight:900 }}>✓</span>}
-                    </div>
-                    <div style={{ ...mono, fontSize:13, color:extraDone[i]?C.muted:C.text, textDecoration:extraDone[i]?'line-through':'none', paddingTop:4, lineHeight:1.5 }}>{task}</div>
+          {battleTasks.map((task, i) => task ? (
+            <div key={task.id} style={{ ...card, border:`1px solid ${C.border}` }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:10 }}>
+                <div style={{ display:'flex', gap:12, alignItems:'flex-start', flex:1 }}>
+                  <div style={check(false, C.orange)} onClick={() => completeBattle(task.id)}></div>
+                  <div style={{ flex:1 }}>
+                    <div style={{ ...mono, fontSize:14, color:C.text, lineHeight:1.5 }}>{task.text}</div>
+                    <div style={{ ...mono, fontSize:10, color:C.muted, marginTop:5, letterSpacing:'0.1em' }}>{'★'.repeat(task.priority)} · {task.energy} {task.energy === 1 ? 'pt' : 'pts'}</div>
                   </div>
                 </div>
+                <button onClick={() => swapBattleOut(task.id)} style={{ ...mono, background:'transparent', border:`1px solid ${C.border}`, borderRadius:3, color:C.muted, fontSize:9, letterSpacing:'0.1em', padding:'5px 8px', cursor:'pointer', whiteSpace:'nowrap' }}>SWAP ↩</button>
+              </div>
+            </div>
+          ) : (
+            <div key={'empty'+i} style={{ ...card, border:`1px dashed ${C.border}`, textAlign:'center' }}>
+              <div style={{ ...mono, fontSize:11, color:C.dim }}>Empty slot — add tasks to the master list below</div>
+            </div>
+          ))}
+
+          {/* LOG UNPLANNED */}
+          <div style={{ ...card, borderLeft:`3px solid ${C.red}`, marginTop:24 }}>
+            <div style={{ ...label, color:C.red }}>LOG UNPLANNED WORK</div>
+            <div style={{ ...mono, fontSize:11, color:C.muted, lineHeight:1.6, marginBottom:12 }}>A fire hit that wasn't on the list. Log it — it still counts.</div>
+            <input
+              value={unpText}
+              onChange={e => setUnpText(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') logUnplanned(); }}
+              placeholder="What came up?"
+              style={{ ...mono, width:'100%', background:'#0a0a0a', border:`1px solid ${C.border}`, borderRadius:3, padding:'9px 11px', fontSize:13, color:C.text, outline:'none', marginBottom:10 }}
+            />
+            <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+              <div style={{ display:'flex', gap:5 }}>
+                {[1,2,3].map(n => (
+                  <button key={n} onClick={() => setUnpEnergy(n)} style={{ ...mono, width:32, height:32, borderRadius:3, border:`1px solid ${unpEnergy===n?C.red:C.border}`, background:unpEnergy===n?C.red:'transparent', color:unpEnergy===n?'#fff':C.muted, fontSize:13, fontWeight:700, cursor:'pointer' }}>{n}</button>
+                ))}
+              </div>
+              <button onClick={logUnplanned} style={{ ...btnFull(C.red), flex:1, color:'#fff' }}>LOG IT — BANK {unpEnergy} {unpEnergy===1?'PT':'PTS'}</button>
+            </div>
+          </div>
+
+          {unplanned.length > 0 && (
+            <div style={{ ...card }}>
+              <div style={{ ...label, marginBottom:10 }}>LOGGED TODAY ({unplannedEnergy} pts)</div>
+              {unplanned.map((u, i) => (
+                <div key={i} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'7px 0', borderBottom:i<unplanned.length-1?`1px solid ${C.border}`:'none' }}>
+                  <div style={{ ...mono, fontSize:12, color:C.muted, flex:1 }}>{u.text}</div>
+                  <div style={{ ...mono, fontSize:10, color:C.red, marginRight:8 }}>+{u.energy}</div>
+                  <button onClick={() => removeUnplanned(i)} style={{ ...mono, background:'transparent', border:'none', color:C.dim, fontSize:15, cursor:'pointer' }}>×</button>
+                </div>
               ))}
+            </div>
+          )}
+
+          {/* MASTER LIST */}
+          <div style={{ ...card, borderLeft:`3px solid ${C.gold}`, marginTop:24 }}>
+            <div style={{ ...label, color:C.gold }}>MASTER LIST</div>
+            <div style={{ ...mono, fontSize:11, color:C.muted, lineHeight:1.6, marginBottom:12 }}>Everything on your plate. Set priority + energy. Top 3 feed your battles.</div>
+            <input
+              value={newTask}
+              onChange={e => setNewTask(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') addMasterTask(); }}
+              placeholder="Add a task…"
+              style={{ ...mono, width:'100%', background:'#0a0a0a', border:`1px solid ${C.border}`, borderRadius:3, padding:'9px 11px', fontSize:13, color:C.text, outline:'none', marginBottom:10 }}
+            />
+            <div style={{ display:'flex', gap:12, alignItems:'center', flexWrap:'wrap' }}>
+              <div style={{ display:'flex', gap:5, alignItems:'center' }}>
+                <span style={{ ...mono, fontSize:9, color:C.muted, letterSpacing:'0.1em' }}>PRIORITY</span>
+                {[1,2,3].map(n => (
+                  <button key={n} onClick={() => setNewPriority(n)} style={{ ...mono, width:30, height:30, borderRadius:3, border:`1px solid ${newPriority===n?C.gold:C.border}`, background:newPriority===n?C.gold:'transparent', color:newPriority===n?'#0D0D0D':C.muted, fontSize:12, fontWeight:700, cursor:'pointer' }}>{'★'.repeat(n)}</button>
+                ))}
+              </div>
+              <div style={{ display:'flex', gap:5, alignItems:'center' }}>
+                <span style={{ ...mono, fontSize:9, color:C.muted, letterSpacing:'0.1em' }}>ENERGY</span>
+                {[1,2,3].map(n => (
+                  <button key={n} onClick={() => setNewEnergy(n)} style={{ ...mono, width:30, height:30, borderRadius:3, border:`1px solid ${newEnergy===n?C.orange:C.border}`, background:newEnergy===n?C.orange:'transparent', color:newEnergy===n?'#0D0D0D':C.muted, fontSize:12, fontWeight:700, cursor:'pointer' }}>{n}</button>
+                ))}
+              </div>
+              <button onClick={addMasterTask} style={{ ...btnFull(C.gold), flex:1, minWidth:80 }}>ADD</button>
+            </div>
+          </div>
+
+          {masterSorted.filter(t => !battleDone[t.id]).map(task => {
+            const inBattle = filledSlots.includes(task.id);
+            return (
+              <div key={task.id} style={{ ...card, opacity:inBattle?0.55:1 }}>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:10 }}>
+                  <div style={{ flex:1 }}>
+                    <div style={{ ...mono, fontSize:13, color:C.text, lineHeight:1.5 }}>{task.text}</div>
+                    <div style={{ display:'flex', gap:6, alignItems:'center', marginTop:7 }}>
+                      {[1,2,3].map(n => (
+                        <button key={n} onClick={() => setTaskPriority(task.id, n)} style={{ ...mono, fontSize:11, color:task.priority>=n?C.gold:C.dim, background:'transparent', border:'none', cursor:'pointer', padding:0 }}>★</button>
+                      ))}
+                      <span style={{ ...mono, fontSize:10, color:C.muted, marginLeft:4 }}>{task.energy} {task.energy===1?'pt':'pts'}</span>
+                      {inBattle && <span style={{ ...mono, fontSize:9, color:C.orange, letterSpacing:'0.1em', marginLeft:4 }}>IN BATTLE</span>}
+                    </div>
+                  </div>
+                  <div style={{ display:'flex', gap:6, alignItems:'center' }}>
+                    {!inBattle && <button onClick={() => promoteToBattle(task.id)} style={{ ...mono, background:'transparent', border:`1px solid ${C.orange}`, borderRadius:3, color:C.orange, fontSize:9, letterSpacing:'0.1em', padding:'5px 8px', cursor:'pointer', whiteSpace:'nowrap' }}>→ BATTLE</button>}
+                    <button onClick={() => removeMasterTask(task.id)} style={{ ...mono, background:'transparent', border:'none', color:C.dim, fontSize:16, cursor:'pointer' }}>×</button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          {master.length === 0 && (
+            <div style={{ ...card, textAlign:'center' }}>
+              <div style={{ ...mono, fontSize:12, color:C.dim, lineHeight:1.6 }}>Master list is empty. Add what's on your plate above — the top 3 by priority become today's battles.</div>
             </div>
           )}
         </>}
