@@ -7,29 +7,30 @@ const TOUR = [
   { date: "2026-05-28", city: "Stuttgart", country: "DE", venue: "TBD" },
   { date: "2026-05-29", city: "Barberaz", country: "FR", venue: "TBD" },
   { date: "2026-05-30", city: "Cassano D'Adda", country: "IT", venue: "TBD" },
-  { date: "2026-06-11", city: "Fredericton", country: "NB", venue: "The Cap", radio: "CHSR 97.9 FM", radioEmail: "MusicDirector@chsrfm.ca" },
-  { date: "2026-06-12", city: "Charlottetown", country: "PEI", venue: "Baba's Lounge", radio: "CBC Radio One PEI 96.1", radioEmail: "via cbc.ca/pei" },
-  { date: "2026-06-14", city: "Moncton", country: "NB", venue: "The Caveau", radio: "Codiac 93.5 FM", radioEmail: "musique@codiacfm.ca" },
-  { date: "2026-06-18", city: "Chicago", country: "IL", venue: "The Hideout", radio: "WLUW 88.7 FM", radioEmail: "musicdeptwluw@gmail.com" },
-  { date: "2026-06-19", city: "Detroit", country: "MI", venue: "The Sanctuary", radio: "WDET 101.9 FM", radioEmail: "via wdet.org" },
-  { date: "2026-06-21", city: "Gilbert", country: "PA", venue: "TBD" },
-  { date: "2026-06-26", city: "Vancouver", country: "BC", venue: "TBD" },
-  { date: "2026-06-27", city: "Winnipeg", country: "MB", venue: "TBD" },
-  { date: "2026-07-17", city: "Edmonton", country: "AB", venue: "Temple", radio: "CKUA 94.9 FM", radioEmail: "via ckua.com" },
-  { date: "2026-07-18", city: "Yellowknife", country: "NWT", venue: "TBD" },
-  { date: "2026-08-07", city: "Tillsonburg", country: "ON", venue: "TBD" },
-  { date: "2026-08-28", city: "Muskoka", country: "ON", venue: "TBD" },
+  { date: "2026-06-11", city: "Fredericton", country: "NB", venue: "The Cap", venueAddr: "362 Queen St., Fredericton, NB", loadin: "6:30 PM (sound tech 6:00, soundcheck 7:30)", setTime: "11:00 PM–12:00 AM (doors 8:30, curfew 1:00)", details: "19+. Sharing drums/bass backline — supports bring breakables. Adv $15 / door $20. Wifi The CAP / Cap2020!. Park on Queen St, load in through Queen St door. Merch 100% to artist. 1 guest/member. Hospitality: band prices on drinks + 10% off record store. Settlement by e-transfer 1-4 days after — confirm best email. Contact: Zach Atkinson 506.260.3041. Tech specs: drive.google.com/file/d/11LxacFAV4k1guL-K3xNxwH6cbR5yEmXY", hotel: "Travellers Inn, 42 Chaparral Rd, Waasis, NB E3B 0G9 — 2 rooms, itin 72075382604747", radio: "CHSR 97.9 FM", radioEmail: "MusicDirector@chsrfm.ca" },
+  { date: "2026-06-12", city: "Charlottetown", country: "PEI", venue: "Baba's Lounge", venueAddr: "181 Great George St., Charlottetown, PE C1A 4L1", hotel: "Glendenning Hall, 331 Grafton St, Charlottetown, PE C1A 1L9 — 2-bdrm apt, itin 72075392165371", radio: "CBC Radio One PEI 96.1", radioEmail: "via cbc.ca/pei" },
+  { date: "2026-06-13", city: "Halifax", country: "NS", venue: "Seahorse Tavern (Everyseeker Fest)", venueAddr: "2037 Gottingen St., Halifax, NS (entrance on Portland)", loadin: "No later than 15 min before soundcheck (5:30 PM)", setTime: "11:00 PM, 60 min (doors 9:00)", details: "19+. Backline provided. Sound tech: Sara Martin, saramartin.audio@gmail.com. Admission PWYC @ everyseeker.com. Merch 100% venue-sold, table + volunteer provided, bring signage (no float/reader). Festival catering + water backstage. Closing party at Listen Halifax Sun Jun 14. Contacts: Gianna (hosp/transpo) 902.440.1258, Tynan (tech) 902.222.4683, Shuvanjan (payment) 902.401.9459. Tag @everyseeker.", hotel: "Hampton Inn, 1960 Brunswick St, Halifax NS B3J 2G7 — Jun 13-14, 2 rooms, conf 91991862 (room+tax only, bring CC for incidentals)" },
+  { date: "2026-06-14", city: "Moncton", country: "NB", venue: "Tide & Boar Ballroom", venueAddr: "700 Main St., Moncton, NB E1C 1E3", loadin: "4:00 PM (no noise til 4, soundcheck 4:00)", setTime: "10:00 PM (doors 7:00, curfew midnight)", details: "19+, cap 200. Adv $15 / door $20. Supports: Customer Service 9PM, Diner Drugs 8PM. Wifi Duo Cafe / boarpoutine. Merch 100% to artist. Park: right on Downing St immediately after venue, bus+trailer parking behind building. Settlement via Zach Atkinson e-transfer.", hotel: "Fairfield Inn & Suites, 26 Marriott Dr, Moncton, NB E1A 7S4 — check-in Jun 14, itin 72075392602940", radio: "Codiac 93.5 FM", radioEmail: "musique@codiacfm.ca" },
+  { date: "2026-06-18", city: "Chicago", country: "IL", venue: "The Hideout", venueAddr: "1354 W. Wabansia Ave., Chicago, IL 60642", loadin: "5:30 PM (soundcheck 5:45)", setTime: "9:00–10:00 PM (doors 7:30)", details: "21+. NO backline — bring all gear. Load-in via alley behind stage, then move car to free street parking. Wifi HIDEOUT_GUEST / WoodenLeg. Guest list 5/act to door before doors. Merch 100% to band, 6ft table provided. DOS: Kwame Caldwell, production@hideoutchicago.com / 773-484-3755. Payment by check after show (W9 required).", radio: "WLUW 88.7 FM", radioEmail: "musicdeptwluw@gmail.com" },
+  { date: "2026-06-19", city: "Detroit", country: "MI", venue: "The Sanctuary / Crypt", venueAddr: "15701 James Couzens Fwy., Detroit, MI 48238", radio: "WDET 101.9 FM", radioEmail: "via wdet.org" },
+  { date: "2026-06-21", city: "Gilbert", country: "PA", venue: "Camp Punksylvania", venueAddr: "West End Fairgrounds, 570 Fairground Rd., Gilbert, PA" },
+  { date: "2026-06-26", city: "Vancouver", country: "BC", venue: "Black to The Future (Black Music Month)", venueAddr: "2111 Main St., Vancouver, BC V5T 3C6", flight: "Jun 25 TOR→VAN · Flair F8611 · YYZ 1:55PM → YVR 4:05PM · conf 2GXV2Q · Lite + 10kg" },
+  { date: "2026-06-27", city: "Winnipeg", country: "MB", venue: "Village Music Festival", venueAddr: "Osborne Village, Winnipeg, MB", flight: "Jun 27 VAN→WPG · WestJet WS538 · YVR 9:50AM → YWG 2:40PM · conf OLLQIB · seats Denz 10A / Cola 10B / Simon 10C / Joe 10D" },
+  { date: "2026-07-17", city: "Edmonton", country: "AB", venue: "TBD", radio: "CKUA 94.9 FM", radioEmail: "via ckua.com" },
+  { date: "2026-07-18", city: "Yellowknife", country: "NWT", venue: "Folk on the Rocks", venueAddr: "Long Lake / Folk On The Rocks Festival Site, Yellowknife, NT", flight: "Jul 18 EDM→YZF · Canadian North 5T244 · YEG 8:00AM → YZF 9:45AM | Return Jul 19 · 5T245 · YZF 6:30PM → YEG 8:10PM · confs Denz YBGNIK / Cola CXNOJG / Joe NKAHHL / Simon YEDPLE" },
+  { date: "2026-08-07", city: "Tillsonburg", country: "ON", venue: "Buddies Fest", venueAddr: "20 John Pound Rd., Tillsonburg, ON" },
+  { date: "2026-08-28", city: "Bala", country: "ON", venue: "Kee to Bala", venueAddr: "1015 Bala Falls Rd., Bala, ON P0C 1A0" },
   { date: "2026-09-25", city: "London", country: "ON", venue: "TBD" },
-  { date: "2026-11-06", city: "Atlanta", country: "GA", venue: "TBD" },
-  { date: "2026-11-07", city: "Charlotte", country: "NC", venue: "TBD" },
-  { date: "2026-11-08", city: "Richmond", country: "VA", venue: "TBD" },
-  { date: "2026-11-11", city: "Baltimore", country: "DC", venue: "TBD" },
-  { date: "2026-11-12", city: "Philadelphia", country: "PA", venue: "TBD" },
-  { date: "2026-11-13", city: "Boston", country: "MA", venue: "TBD" },
-  { date: "2026-11-14", city: "Brooklyn", country: "NY", venue: "TBD" },
-  { date: "2026-11-19", city: "Los Angeles", country: "CA", venue: "TBD" },
-  { date: "2026-11-20", city: "Vancouver", country: "BC", venue: "TBD" },
-  { date: "2026-11-21", city: "Seattle", country: "WA", venue: "TBD" },
+  { date: "2026-11-06", city: "Atlanta", country: "GA", venue: "The Masquerade – Altar", venueAddr: "50 Lower Alabama St., Atlanta, GA 30303" },
+  { date: "2026-11-07", city: "Charlotte", country: "NC", venue: "Snug Harbor", venueAddr: "1228 Gordon St., Charlotte, NC 28205" },
+  { date: "2026-11-08", city: "Richmond", country: "VA", venue: "The Camel", venueAddr: "2729 W. Broad St., Richmond, VA 23220" },
+  { date: "2026-11-11", city: "Baltimore", country: "MD", venue: "Metro Gallery", venueAddr: "1700 N. Charles St., Baltimore, MD" },
+  { date: "2026-11-12", city: "Philadelphia", country: "PA", venue: "Kung Fu Necktie", venueAddr: "1250 N. Front St., Philadelphia, PA 19122" },
+  { date: "2026-11-13", city: "Boston", country: "MA", venue: "Warehouse XI", venueAddr: "11 Sanborn Ct., Somerville, MA 02143" },
+  { date: "2026-11-14", city: "Brooklyn", country: "NY", venue: "The Wood Shop", venueAddr: "21A Meadow St., Brooklyn, NY 11206" },
+  { date: "2026-11-19", city: "Los Angeles", country: "CA", venue: "Moroccan Lounge", venueAddr: "901 E. 1st St., Los Angeles, CA 90012" },
+  { date: "2026-11-20", city: "Vancouver", country: "BC", venue: "Green Auto", venueAddr: "1822 Pandora St., Vancouver, BC V5L 1M5" },
+  { date: "2026-11-21", city: "Seattle", country: "WA", venue: "Fun Lounge", venueAddr: "109 Eastlake Ave E, Seattle, WA 98109" },
 ];
 
 const MORNING_STEPS = [
@@ -189,6 +190,7 @@ const ROOMS = [
   { key:'journal',  label:'JOURNAL',          sub:'Your sentences, by day',    color:C.text },
   { key:'goals',    label:'GOALS',            sub:'The boss — 150K',           color:C.red },
   { key:'pocket',   label:"MUSICIAN'S POCKET",sub:'Tour · bumpers · outreach', color:C.orange },
+  { key:'calendar', label:'CALENDAR',         sub:'Tour dates, month view',    color:C.blue },
   { key:'money',    label:'MONEY',            sub:'The war chest',             color:C.gold },
 ];
 
@@ -805,15 +807,18 @@ Here's the info for ${sel.city} on ${formatDate(sel.date)}.
 
 SHOW
 Venue: ${d.venue || sel.venue || 'TBD'}
-Address: ${d.venueAddr || 'TBD'}
-Load-in: ${d.loadin || 'TBD'}
-Set time: ${d.setTime || 'TBD'}
+Address: ${d.venueAddr || sel.venueAddr || 'TBD'}
+Load-in: ${d.loadin || sel.loadin || 'TBD'}
+Set time: ${d.setTime || sel.setTime || 'TBD'}${sel.details ? '\n\n' + sel.details : ''}
 
 STAY
-Hotel: ${d.hotel || 'TBD'}
+Hotel: ${d.hotel || sel.hotel || 'TBD'}
 Address: ${d.hotelAddr || 'TBD'}
 Check-in: ${d.checkin || 'TBD'}
 Confirmation #: ${d.conf || 'TBD'}
+
+TRAVEL
+${d.travelMode === 'flight' || (sel.flight && d.travelMode !== 'van') ? (d.flightInfo || sel.flight || 'Flight — TBD') : 'Van' + (d.driveNotes ? ' — ' + d.driveNotes : '')}
 
 ${d.notes ? 'NOTES\n' + d.notes + '\n\n' : ''}— Denz` : '';
 
@@ -875,13 +880,34 @@ ${d.notes ? 'NOTES\n' + d.notes + '\n\n' : ''}— Denz` : '';
                     <input value={bandEmails} onChange={e => setBandEmails(e.target.value)} placeholder="comma-separated"
                       style={{ ...mono, width:'100%', background:'#0a0a0a', border:`1px solid ${C.border}`, borderRadius:3, padding:'8px 10px', fontSize:12, color:C.text, outline:'none', marginBottom:14 }} />
                     {fld('VENUE', 'venue', sel.venue && sel.venue !== 'TBD' ? sel.venue : 'venue')}
-                    {fld('VENUE ADDRESS', 'venueAddr', 'street, city')}
-                    {fld('LOAD-IN', 'loadin', 'e.g. 4:00 PM')}
-                    {fld('SET TIME', 'setTime', 'e.g. 10:30 PM')}
-                    {fld('HOTEL', 'hotel', 'hotel name')}
+                    {fld('VENUE ADDRESS', 'venueAddr', sel.venueAddr || 'street, city')}
+                    {fld('LOAD-IN', 'loadin', sel.loadin || 'e.g. 4:00 PM')}
+                    {fld('SET TIME', 'setTime', sel.setTime || 'e.g. 10:30 PM')}
+                    {fld('HOTEL', 'hotel', sel.hotel || 'hotel name')}
                     {fld('HOTEL ADDRESS', 'hotelAddr', 'street, city')}
                     {fld('CHECK-IN', 'checkin', 'e.g. June 13, after 3 PM')}
                     {fld('CONFIRMATION #', 'conf', 'booking ref')}
+
+                    {/* TRAVEL */}
+                    <div style={{ ...mono, fontSize:9, letterSpacing:'0.2em', color:C.muted, margin:'4px 0 6px' }}>TRAVEL</div>
+                    <div style={{ display:'flex', gap:6, marginBottom:10 }}>
+                      {[['van','VAN'],['flight','FLIGHT']].map(([k,lbl]) => {
+                        const active = d.travelMode === k || (!d.travelMode && k === 'flight' && sel.flight) || (!d.travelMode && k === 'van' && !sel.flight);
+                        return (
+                          <button key={k} onClick={() => setAdvField(selDate, 'travelMode', k)}
+                            style={{ ...mono, flex:1, padding:'7px 10px', borderRadius:3, border:`1px solid ${active?C.blue:C.border}`, background:active?C.blue:'transparent', color:active?'#0D0D0D':C.muted, fontSize:10, letterSpacing:'0.12em', fontWeight:700, cursor:'pointer' }}>{lbl}</button>
+                        );
+                      })}
+                    </div>
+                    {(d.travelMode === 'flight' || (!d.travelMode && sel.flight)) ? (
+                      <>
+                        {sel.flight && <div style={{ ...mono, fontSize:11, color:C.blue, lineHeight:1.5, background:'#0a0a0a', border:`1px solid ${C.border}`, borderRadius:3, padding:10, marginBottom:10, whiteSpace:'pre-wrap' }}>{sel.flight}</div>}
+                        {fld('FLIGHT (override / add detail)', 'flightInfo', sel.flight || 'airline, flight #, conf, times, seats')}
+                      </>
+                    ) : (
+                      fld('DRIVE NOTES', 'driveNotes', 'route, departure, drive time')
+                    )}
+
                     {fld('NOTES', 'notes', 'anything else')}
                     <div style={{ ...mono, fontSize:9, letterSpacing:'0.2em', color:C.muted, margin:'4px 0 6px' }}>PREVIEW</div>
                     <div style={{ ...mono, background:'#0a0a0a', border:`1px solid ${C.border}`, borderRadius:3, padding:12, fontSize:11, lineHeight:1.6, color:C.text, whiteSpace:'pre-wrap', maxHeight:200, overflowY:'auto', marginBottom:12 }}>{bandBody}</div>
@@ -1007,6 +1033,55 @@ Denz — The OBGMs`}
                 </div>
               );
             })}
+          </div>
+        </>}
+
+        {/* ══════════ CALENDAR ══════════ */}
+        {room === 'calendar' && <>
+          <div style={{ ...card, borderLeft:`3px solid ${C.blue}` }}>
+            <div style={{ ...label, color:C.blue }}>TOUR CALENDAR</div>
+            <div style={{ ...mono, fontSize:12, color:C.muted, lineHeight:1.6 }}>Month view of show dates. Tap a show to open its advance.</div>
+          </div>
+
+          {(() => {
+            const months3 = ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'];
+            // months that have shows, from this month forward
+            const showMonths = [...new Set(TOUR.filter(s => s.city !== 'OFF' && daysUntil(s.date) >= -31).map(s => s.date.slice(0,7)))].sort();
+            const dow = ['S','M','T','W','T','F','S'];
+            return showMonths.map(ym => {
+              const [yy, mm] = ym.split('-').map(Number);
+              const firstDay = new Date(yy, mm-1, 1).getDay();
+              const daysInM = new Date(yy, mm, 0).getDate();
+              const cells = [];
+              for (let i=0;i<firstDay;i++) cells.push(null);
+              for (let dn=1;dn<=daysInM;dn++) cells.push(dn);
+              return (
+                <div key={ym} style={{ ...card }}>
+                  <div style={{ ...label, color:C.blue, marginBottom:12 }}>{months3[mm-1]} {yy}</div>
+                  <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:4 }}>
+                    {dow.map((d,i) => <div key={'h'+i} style={{ ...mono, fontSize:9, color:C.muted, textAlign:'center', padding:'2px 0' }}>{d}</div>)}
+                    {cells.map((dn, i) => {
+                      if (!dn) return <div key={'e'+i} />;
+                      const ds = `${yy}-${String(mm).padStart(2,'0')}-${String(dn).padStart(2,'0')}`;
+                      const show = TOUR.find(s => s.date === ds && s.city !== 'OFF');
+                      const isToday = ds === today;
+                      return (
+                        <div key={ds}
+                          onClick={() => { if (show) { setAdvanceShow(ds); setAdvanceMode('band'); go('pocket'); } }}
+                          style={{ aspectRatio:'1', borderRadius:3, border:`1px solid ${isToday?C.gold:show?C.red:C.border}`, background:show?C.red:'transparent', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', cursor:show?'pointer':'default', padding:2, overflow:'hidden' }}>
+                          <div style={{ ...mono, fontSize:11, fontWeight:show?700:400, color:show?'#0D0D0D':isToday?C.gold:C.muted }}>{dn}</div>
+                          {show && <div style={{ ...mono, fontSize:7, color:'#0D0D0D', letterSpacing:'0.02em', textAlign:'center', lineHeight:1, marginTop:1, maxWidth:'100%', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{show.city.slice(0,6)}</div>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            });
+          })()}
+
+          <div style={{ ...mono, fontSize:10, color:C.muted, marginTop:4, lineHeight:1.6 }}>
+            <span style={{ color:C.red }}>■</span> Show night &nbsp; <span style={{ color:C.gold }}>□</span> Today
           </div>
         </>}
 
