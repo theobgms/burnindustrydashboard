@@ -33,6 +33,21 @@ const TOUR = [
   { date: "2026-11-21", city: "Seattle", country: "WA", venue: "Fun Lounge", venueAddr: "109 Eastlake Ave E, Seattle, WA 98109" },
 ];
 
+// Pre-loaded tour costs from receipts (CAD). Each show keys to income[] + expenses[] lines.
+const PNL_SEED = {
+  "2026-06-11": { expenses: [
+    { label: "Hotel — Travellers Inn (2 rooms)", amt: 285.14 },
+    { label: "Drum beater — Long & McQuade", amt: 38.70 },
+    { label: "Gas — Petro-Canada (Brighton)", amt: 136.15 },
+    { label: "Gas — Shell (Valleyfield)", amt: 50.00 },
+  ] },
+  "2026-06-12": { expenses: [{ label: "Hotel — Glendenning Hall", amt: 179.99 }] },
+  "2026-06-14": { expenses: [{ label: "Hotel — Fairfield Inn Moncton", amt: 222.25 }] },
+  "2026-06-26": { expenses: [{ label: "Flight — TOR→VAN (Flair, all 4)", amt: 1563.07 }] },
+  "2026-06-27": { expenses: [{ label: "Flight — VAN→WPG (WestJet, all 4)", amt: 1246.17 }] },
+  "2026-07-18": { expenses: [{ label: "Flight — EDM→YZF + return (Cdn North, all 4)", amt: 3225.20 }] },
+};
+
 const MORNING_STEPS = [
   { id: "m1", time: "10 min", title: "No phone", desc: "Shower. Coffee. Window. Let your nervous system wake up before the world hits it." },
   { id: "m2", time: "5 min", title: "Box breathing", desc: "Inhale 4. Hold 4. Exhale 4. Hold 4. Repeat. This is medicine — treat it like your Vyvanse." },
@@ -221,6 +236,8 @@ export default function App() {
   const [bandEmails, setBandEmails] = useState('denz@burnindustry.com, simonouthit@gmail.com');
   const [advanceShow, setAdvanceShow] = useState('');
   const [advanceMode, setAdvanceMode] = useState('promoter');
+  const [pnl, setPnl] = useState({});
+  const [pocketTab, setPocketTab] = useState('advance');
 
   const today = todayStr();
   const todayShow = getShowForDate(today);
@@ -252,6 +269,8 @@ export default function App() {
       if (adv && typeof adv === 'object') setAdvanceData(adv);
       const be = localStorage.getItem('bi_band_emails');
       if (be) setBandEmails(be);
+      const pl = JSON.parse(localStorage.getItem('bi_pnl') || 'null');
+      setPnl(pl && typeof pl === 'object' ? pl : PNL_SEED);
     } catch(e) {}
     setTimeout(() => setLoaded(true), 80);
   }, []);
@@ -289,6 +308,34 @@ export default function App() {
 
   function setAdvField(date, field, value) {
     setAdvanceData(d => ({ ...d, [date]: { ...(d[date] || {}), [field]: value } }));
+  }
+
+  useEffect(() => {
+    if (!loaded) return;
+    try { localStorage.setItem('bi_pnl', JSON.stringify(pnl)); } catch(e) {}
+  }, [pnl, loaded]);
+
+  function addPnlLine(date, kind) {
+    setPnl(p => {
+      const row = p[date] || {};
+      const list = row[kind] || [];
+      return { ...p, [date]: { ...row, [kind]: [...list, { label: "", amt: 0 }] } };
+    });
+  }
+  function setPnlLine(date, kind, i, field, value) {
+    setPnl(p => {
+      const row = p[date] || {};
+      const list = [...(row[kind] || [])];
+      list[i] = { ...list[i], [field]: field === 'amt' ? (parseFloat(value) || 0) : value };
+      return { ...p, [date]: { ...row, [kind]: list } };
+    });
+  }
+  function removePnlLine(date, kind, i) {
+    setPnl(p => {
+      const row = p[date] || {};
+      const list = (row[kind] || []).filter((_, idx) => idx !== i);
+      return { ...p, [date]: { ...row, [kind]: list } };
+    });
   }
 
   // music on/off
@@ -833,6 +880,15 @@ ${d.notes ? 'NOTES\n' + d.notes + '\n\n' : ''}— Denz` : '';
 
             return (
               <>
+                {/* POCKET TABS */}
+                <div style={{ display:'flex', gap:6, marginBottom:16 }}>
+                  {[['advance','ADVANCE'],['pnl','TOUR P&L']].map(([k,lbl]) => (
+                    <button key={k} onClick={() => { snd(sfxTap); setPocketTab(k); }}
+                      style={{ ...mono, flex:1, padding:'9px 10px', borderRadius:3, border:`1px solid ${pocketTab===k?C.gold:C.border}`, background:pocketTab===k?C.gold:'transparent', color:pocketTab===k?'#0D0D0D':C.muted, fontSize:11, letterSpacing:'0.14em', fontWeight:700, cursor:'pointer' }}>{lbl}</button>
+                  ))}
+                </div>
+
+                {pocketTab === 'advance' && <>
                 <div style={{ ...card, borderLeft:`3px solid ${C.red}` }}>
                   <div style={{ ...label, color:C.red }}>ADVANCE</div>
                   <div style={{ ...mono, fontSize:12, color:C.muted, lineHeight:1.6 }}>Generate the promoter advance and the band logistics email for any upcoming show. Copy it, or open straight in your mail app.</div>
@@ -925,10 +981,84 @@ ${d.notes ? 'NOTES\n' + d.notes + '\n\n' : ''}— Denz` : '';
                 </div>
 
                 <div style={{ borderTop:`1px solid ${C.border}`, margin:'24px 0 4px' }} />
-              </>
-            );
-          })()}
+                </>}
 
+                {pocketTab === 'pnl' && (() => {
+                  const fmtCAD = (n) => '$' + n.toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                  const shows = TOUR.filter(s => s.city !== 'OFF');
+                  let tourIn = 0, tourOut = 0;
+                  shows.forEach(s => {
+                    const r = pnl[s.date] || {};
+                    (r.income || []).forEach(l => tourIn += (l.amt || 0));
+                    (r.expenses || []).forEach(l => tourOut += (l.amt || 0));
+                  });
+                  const tourNet = tourIn - tourOut;
+                  // only show rows that have any lines, plus the selected show
+                  const rowsToShow = shows.filter(s => {
+                    const r = pnl[s.date] || {};
+                    return (r.income && r.income.length) || (r.expenses && r.expenses.length) || s.date === selDate;
+                  });
+                  const lineRow = (s, kind) => (pnl[s.date]?.[kind] || []).map((l, i) => (
+                    <div key={kind+i} style={{ display:'flex', gap:6, alignItems:'center', marginBottom:6 }}>
+                      <input value={l.label} onChange={e => setPnlLine(s.date, kind, i, 'label', e.target.value)} placeholder={kind === 'income' ? 'income source' : 'expense'}
+                        style={{ ...mono, flex:1, background:'#0a0a0a', border:`1px solid ${C.border}`, borderRadius:3, padding:'7px 9px', fontSize:12, color:C.text, outline:'none' }} />
+                      <input value={l.amt || ''} onChange={e => setPnlLine(s.date, kind, i, 'amt', e.target.value)} placeholder="0" inputMode="decimal"
+                        style={{ ...mono, width:74, background:'#0a0a0a', border:`1px solid ${C.border}`, borderRadius:3, padding:'7px 9px', fontSize:12, color:kind === 'income' ? C.gold : C.text, outline:'none', textAlign:'right' }} />
+                      <button onClick={() => removePnlLine(s.date, kind, i)} style={{ ...mono, background:'transparent', border:'none', color:C.muted, fontSize:16, cursor:'pointer', padding:'0 4px' }}>×</button>
+                    </div>
+                  ));
+                  return (
+                    <>
+                      {/* TOUR TOTAL */}
+                      <div style={{ ...card, borderLeft:`3px solid ${tourNet >= 0 ? C.gold : C.red}` }}>
+                        <div style={{ ...label, color:tourNet >= 0 ? C.gold : C.red }}>TOUR P&L</div>
+                        <div style={{ display:'flex', justifyContent:'space-between', marginTop:8 }}>
+                          <div><div style={{ ...mono, fontSize:9, color:C.muted, letterSpacing:'0.15em' }}>IN</div><div style={{ ...mono, fontSize:15, color:C.gold }}>{fmtCAD(tourIn)}</div></div>
+                          <div><div style={{ ...mono, fontSize:9, color:C.muted, letterSpacing:'0.15em' }}>OUT</div><div style={{ ...mono, fontSize:15, color:C.text }}>{fmtCAD(tourOut)}</div></div>
+                          <div><div style={{ ...mono, fontSize:9, color:C.muted, letterSpacing:'0.15em' }}>NET</div><div style={{ ...mono, fontSize:15, fontWeight:700, color:tourNet >= 0 ? C.gold : C.red }}>{tourNet < 0 ? '−' : ''}{fmtCAD(Math.abs(tourNet))}</div></div>
+                        </div>
+                        <div style={{ ...mono, fontSize:10, color:C.muted, marginTop:10, lineHeight:1.5 }}>Flights + hotels pre-loaded from receipts. Add guarantees, merch, gas, food per show below. CAD.</div>
+                      </div>
+
+                      {/* SHOW PICKER */}
+                      <div style={{ ...label, marginBottom:8 }}>ADD TO SHOW</div>
+                      <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:16 }}>
+                        {shows.map((s, i) => (
+                          <button key={i}
+                            style={{ ...mono, padding:'6px 10px', borderRadius:3, border:`1px solid ${selDate===s.date?C.gold:C.border}`, background:selDate===s.date?C.gold:'transparent', color:selDate===s.date?'#0D0D0D':C.muted, fontSize:10, letterSpacing:'0.08em', cursor:'pointer' }}
+                            onClick={() => { snd(sfxTap); setAdvanceShow(s.date); }}>
+                            {s.city} {formatDate(s.date)}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* PER-SHOW CARDS */}
+                      {rowsToShow.map(s => {
+                        const r = pnl[s.date] || {};
+                        const inSum = (r.income || []).reduce((a, l) => a + (l.amt || 0), 0);
+                        const outSum = (r.expenses || []).reduce((a, l) => a + (l.amt || 0), 0);
+                        const net = inSum - outSum;
+                        return (
+                          <div key={s.date} style={{ ...card, border:`1px solid ${s.date===selDate?C.gold:C.border}` }}>
+                            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:12 }}>
+                              <div style={{ ...mono, fontSize:14, fontWeight:700 }}>{s.city}</div>
+                              <div style={{ ...mono, fontSize:11, color:C.muted }}>{formatDate(s.date)} · net <span style={{ color:net >= 0 ? C.gold : C.red }}>{net < 0 ? '−' : ''}{fmtCAD(Math.abs(net))}</span></div>
+                            </div>
+                            <div style={{ ...mono, fontSize:9, letterSpacing:'0.2em', color:C.gold, marginBottom:6 }}>INCOME</div>
+                            {lineRow(s, 'income')}
+                            <button onClick={() => addPnlLine(s.date, 'income')} style={{ ...mono, background:'transparent', border:`1px dashed ${C.border}`, borderRadius:3, color:C.muted, fontSize:10, padding:'6px 10px', cursor:'pointer', marginBottom:14, width:'100%' }}>+ income</button>
+                            <div style={{ ...mono, fontSize:9, letterSpacing:'0.2em', color:C.muted, marginBottom:6 }}>EXPENSES</div>
+                            {lineRow(s, 'expenses')}
+                            <button onClick={() => addPnlLine(s.date, 'expenses')} style={{ ...mono, background:'transparent', border:`1px dashed ${C.border}`, borderRadius:3, color:C.muted, fontSize:10, padding:'6px 10px', cursor:'pointer', width:'100%' }}>+ expense</button>
+                          </div>
+                        );
+                      })}
+                      <div style={{ borderTop:`1px solid ${C.border}`, margin:'24px 0 4px' }} />
+                    </>
+                  );
+                })()}
+
+          {pocketTab === 'advance' && <>
           {/* OUTREACH */}
           <div style={{ ...card, borderLeft:`3px solid ${C.gold}` }}>
             <div style={{ ...label, color:C.gold }}>OUTREACH RULE</div>
@@ -1032,6 +1162,10 @@ Denz — The OBGMs`}
               );
             })}
           </div>
+          </>}
+              </>
+            );
+          })()}
         </>}
 
         {/* ══════════ CALENDAR ══════════ */}
