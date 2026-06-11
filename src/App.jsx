@@ -34,12 +34,60 @@ const TOUR = [
 ];
 
 // Pre-loaded tour costs from receipts (CAD). Each show keys to income[] + expenses[] lines.
+// EU receipts converted: EUR 1.47, GBP 1.71, DKK 0.197.
 const PNL_SEED = {
+  "2026-05-25": { expenses: [
+    { label: "Van rental — 22 days + delivery (GBP)", amt: 4275.00 },
+    { label: "Backline — Sideshow4U (GBP)", amt: 1655.28 },
+    { label: "Diesel — Shell London (GBP)", amt: 161.10 },
+    { label: "Diesel — Patcham Brighton (GBP)", amt: 149.98 },
+    { label: "Diesel — Welcome Break Newport (GBP)", amt: 172.21 },
+    { label: "Supplies — Lidl (GBP)", amt: 28.86 },
+    { label: "AdBlue — BP Waalre (EUR)", amt: 36.74 },
+  ] },
+  "2026-05-26": { expenses: [
+    { label: "Diesel — Q8 Sønderborg #1 (DKK)", amt: 39.40 },
+    { label: "Diesel — Q8 Sønderborg #2 (DKK)", amt: 175.83 },
+    { label: "Diesel — Aral Würzburg (EUR)", amt: 170.51 },
+  ] },
+  "2026-05-28": { expenses: [
+    { label: "Diesel — Autohof Vöhringen (EUR)", amt: 139.80 },
+    { label: "Diesel — Esso Péronne (EUR)", amt: 147.00 },
+    { label: "Toll — Liefkenshoek (EUR)", amt: 11.76 },
+    { label: "Toll — Sanef 23/05 (EUR)", amt: 27.78 },
+    { label: "Toll — Sanef 24/05 (EUR)", amt: 27.78 },
+  ] },
+  "2026-05-29": { expenses: [
+    { label: "Diesel — Intermarché (EUR)", amt: 144.82 },
+    { label: "Toll — Area (EUR)", amt: 22.34 },
+    { label: "Toll — SFTRF Maurienne (EUR)", amt: 8.08 },
+    { label: "Toll — SFTRF Fréjus tunnel (EUR)", amt: 81.58 },
+    { label: "Toll — SITAF a (EUR)", amt: 11.03 },
+    { label: "Toll — SITAF b (EUR)", amt: 8.08 },
+    { label: "Toll — Satap (EUR)", amt: 26.61 },
+  ] },
+  "2026-05-30": { expenses: [
+    { label: "Diesel — TotalEnergies Dijon (EUR)", amt: 73.50 },
+    { label: "Diesel — Shell Sompuis (EUR)", amt: 138.24 },
+    { label: "Diesel — Esso Angres (EUR)", amt: 63.21 },
+    { label: "Toll — Corsa (EUR)", amt: 82.91 },
+    { label: "Toll — ATMB Cluses (EUR)", amt: 7.06 },
+    { label: "Toll — APRR (EUR)", amt: 68.21 },
+    { label: "Toll — Sanef Reims (EUR)", amt: 19.40 },
+    { label: "Toll — Sanef Calais (EUR)", amt: 39.10 },
+  ] },
   "2026-06-11": { expenses: [
     { label: "Hotel — Travellers Inn (2 rooms)", amt: 285.14 },
     { label: "Drum beater — Long & McQuade", amt: 38.70 },
     { label: "Gas — Petro-Canada (Brighton)", amt: 136.15 },
     { label: "Gas — Shell (Valleyfield)", amt: 50.00 },
+    { label: "Pre-tour — LCBO hospitality", amt: 61.20 },
+    { label: "Pre-tour — L&M strings/picks", amt: 48.30 },
+    { label: "Pre-tour — Shell Montreal gas", amt: 144.13 },
+    { label: "Pre-tour — Classic Towing", amt: 113.00 },
+    { label: "Pre-tour — Esso gas (Apr 18)", amt: 153.18 },
+    { label: "Pre-tour — Esso gas (Apr 30)", amt: 93.24 },
+    { label: "Pre-tour — Petro-Canada Odessa gas", amt: 143.22 },
   ] },
   "2026-06-12": { expenses: [{ label: "Hotel — Glendenning Hall", amt: 179.99 }] },
   "2026-06-14": { expenses: [{ label: "Hotel — Fairfield Inn Moncton", amt: 222.25 }] },
