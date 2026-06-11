@@ -471,7 +471,15 @@ export default function App() {
     snd(sfxCheck);
     setBattleDone(d => ({ ...d, [id]: true }));
     setBattleSlots(s => s.map(x => x === id ? null : x)); // free the slot, next priority fills in
-    setMaster(m => m.filter(t => t.id !== id));           // done = leaves the backlog
+    // task STAYS in master (marked done) so its energy banks; it's filtered out of visible lists
+  }
+  function toggleTaskDone(id) {
+    setBattleDone(d => {
+      const next = { ...d };
+      if (next[id]) { delete next[id]; } else { next[id] = true; snd(sfxCheck); }
+      return next;
+    });
+    setBattleSlots(s => s.map(x => x === id ? null : x));
   }
   function swapBattleOut(id) {
     snd(sfxTap);
@@ -761,14 +769,17 @@ export default function App() {
             return (
               <div key={task.id} style={{ ...card, opacity:inBattle?0.55:1 }}>
                 <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:10 }}>
-                  <div style={{ flex:1 }}>
-                    <div style={{ ...mono, fontSize:13, color:C.text, lineHeight:1.5 }}>{task.text}</div>
-                    <div style={{ display:'flex', gap:6, alignItems:'center', marginTop:7 }}>
-                      {[1,2,3].map(n => (
-                        <button key={n} onClick={() => setTaskPriority(task.id, n)} style={{ ...mono, fontSize:11, color:task.priority>=n?C.gold:C.dim, background:'transparent', border:'none', cursor:'pointer', padding:0 }}>★</button>
-                      ))}
-                      <span style={{ ...mono, fontSize:10, color:C.muted, marginLeft:4 }}>{task.energy} {task.energy===1?'pt':'pts'}</span>
-                      {inBattle && <span style={{ ...mono, fontSize:9, color:C.orange, letterSpacing:'0.1em', marginLeft:4 }}>IN BATTLE</span>}
+                  <div style={{ display:'flex', gap:11, alignItems:'flex-start', flex:1 }}>
+                    <div style={check(false, C.gold)} onClick={() => toggleTaskDone(task.id)}></div>
+                    <div style={{ flex:1 }}>
+                      <div style={{ ...mono, fontSize:13, color:C.text, lineHeight:1.5 }}>{task.text}</div>
+                      <div style={{ display:'flex', gap:6, alignItems:'center', marginTop:7 }}>
+                        {[1,2,3].map(n => (
+                          <button key={n} onClick={() => setTaskPriority(task.id, n)} style={{ ...mono, fontSize:11, color:task.priority>=n?C.gold:C.dim, background:'transparent', border:'none', cursor:'pointer', padding:0 }}>★</button>
+                        ))}
+                        <span style={{ ...mono, fontSize:10, color:C.muted, marginLeft:4 }}>{task.energy} {task.energy===1?'pt':'pts'}</span>
+                        {inBattle && <span style={{ ...mono, fontSize:9, color:C.orange, letterSpacing:'0.1em', marginLeft:4 }}>IN BATTLE</span>}
+                      </div>
                     </div>
                   </div>
                   <div style={{ display:'flex', gap:6, alignItems:'center' }}>
@@ -783,6 +794,25 @@ export default function App() {
           {master.length === 0 && (
             <div style={{ ...card, textAlign:'center' }}>
               <div style={{ ...mono, fontSize:12, color:C.dim, lineHeight:1.6 }}>Master list is empty. Add what's on your plate above — the top 3 by priority become today's battles.</div>
+            </div>
+          )}
+
+          {/* DONE — completed tasks (energy already banked) */}
+          {master.filter(t => battleDone[t.id]).length > 0 && (
+            <div style={{ ...card, marginTop:16 }}>
+              <div style={{ ...label, color:C.gold, marginBottom:10 }}>DONE — {battleEnergy} PTS BANKED</div>
+              {master.filter(t => battleDone[t.id]).map(task => (
+                <div key={task.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'8px 0', borderBottom:`1px solid ${C.border}` }}>
+                  <div style={{ display:'flex', gap:10, alignItems:'center', flex:1, cursor:'pointer' }} onClick={() => toggleTaskDone(task.id)}>
+                    <div style={{ ...check(true, C.gold) }}><span style={{ fontSize:11, color:'#0D0D0D', fontWeight:900 }}>✓</span></div>
+                    <span style={{ ...mono, fontSize:12, color:C.muted, textDecoration:'line-through', lineHeight:1.4 }}>{task.text}</span>
+                  </div>
+                  <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+                    <span style={{ ...mono, fontSize:10, color:C.gold }}>+{task.energy}</span>
+                    <button onClick={() => removeMasterTask(task.id)} style={{ ...mono, background:'transparent', border:'none', color:C.dim, fontSize:15, cursor:'pointer' }}>×</button>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </>}
