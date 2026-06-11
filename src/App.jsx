@@ -7,11 +7,11 @@ const TOUR = [
   { date: "2026-05-28", city: "Stuttgart", country: "DE", venue: "TBD" },
   { date: "2026-05-29", city: "Barberaz", country: "FR", venue: "TBD" },
   { date: "2026-05-30", city: "Cassano D'Adda", country: "IT", venue: "TBD" },
-  { date: "2026-06-11", city: "Fredericton", country: "NB", venue: "The Cap", venueAddr: "362 Queen St., Fredericton, NB", loadin: "6:30 PM (sound tech 6:00, soundcheck 7:30)", setTime: "11:00 PM–12:00 AM (doors 8:30, curfew 1:00)", details: "19+. Sharing drums/bass backline — supports bring breakables. Adv $15 / door $20. Wifi The CAP / Cap2020!. Park on Queen St, load in through Queen St door. Merch 100% to artist. 1 guest/member. Hospitality: band prices on drinks + 10% off record store. Settlement by e-transfer 1-4 days after — confirm best email. Contact: Zach Atkinson 506.260.3041. Tech specs: drive.google.com/file/d/11LxacFAV4k1guL-K3xNxwH6cbR5yEmXY", hotel: "Travellers Inn, 42 Chaparral Rd, Waasis, NB E3B 0G9 — 2 rooms, itin 72075382604747", radio: "CHSR 97.9 FM", radioEmail: "MusicDirector@chsrfm.ca" },
+  { date: "2026-06-11", city: "Fredericton", country: "NB", venue: "The Cap", venueAddr: "362 Queen St., Fredericton, NB", loadin: "6:30 PM (sound tech 6:00, soundcheck 7:30)", setTime: "11:00 PM–12:00 AM (doors 8:30, curfew 1:00)", info: [["Age", "19+"], ["Backline", "Sharing drums/bass — supports bring breakables"], ["Tickets", "Adv $15 / door $20"], ["Wifi", "The CAP / Cap2020!"], ["Parking", "Queen St, load in through Queen St door"], ["Merch", "100% to artist"], ["Guest list", "1 per member"], ["Hospitality", "Band prices on drinks + 10% off record store"], ["Settlement", "E-transfer 1-4 days after — confirm best email"], ["Contact", "Zach Atkinson 506.260.3041"], ["Tech specs", "drive.google.com/file/d/11LxacFAV4k1guL-K3xNxwH6cbR5yEmXY"]], hotel: "Travellers Inn, 42 Chaparral Rd, Waasis, NB E3B 0G9 — 2 rooms, itin 72075382604747", radio: "CHSR 97.9 FM", radioEmail: "MusicDirector@chsrfm.ca" },
   { date: "2026-06-12", city: "Charlottetown", country: "PEI", venue: "Baba's Lounge", venueAddr: "181 Great George St., Charlottetown, PE C1A 4L1", hotel: "Glendenning Hall, 331 Grafton St, Charlottetown, PE C1A 1L9 — 2-bdrm apt, itin 72075392165371", radio: "CBC Radio One PEI 96.1", radioEmail: "via cbc.ca/pei" },
-  { date: "2026-06-13", city: "Halifax", country: "NS", venue: "Seahorse Tavern (Everyseeker Fest)", venueAddr: "2037 Gottingen St., Halifax, NS (entrance on Portland)", loadin: "No later than 15 min before soundcheck (5:30 PM)", setTime: "11:00 PM, 60 min (doors 9:00)", details: "19+. Backline provided. Sound tech: Sara Martin, saramartin.audio@gmail.com. Admission PWYC @ everyseeker.com. Merch 100% venue-sold, table + volunteer provided, bring signage (no float/reader). Festival catering + water backstage. Closing party at Listen Halifax Sun Jun 14. Contacts: Gianna (hosp/transpo) 902.440.1258, Tynan (tech) 902.222.4683, Shuvanjan (payment) 902.401.9459. Tag @everyseeker.", hotel: "Hampton Inn, 1960 Brunswick St, Halifax NS B3J 2G7 — Jun 13-14, 2 rooms, conf 91991862 (room+tax only, bring CC for incidentals)" },
-  { date: "2026-06-14", city: "Moncton", country: "NB", venue: "Tide & Boar Ballroom", venueAddr: "700 Main St., Moncton, NB E1C 1E3", loadin: "4:00 PM (no noise til 4, soundcheck 4:00)", setTime: "10:00 PM (doors 7:00, curfew midnight)", details: "19+, cap 200. Adv $15 / door $20. Supports: Customer Service 9PM, Diner Drugs 8PM. Wifi Duo Cafe / boarpoutine. Merch 100% to artist. Park: right on Downing St immediately after venue, bus+trailer parking behind building. Settlement via Zach Atkinson e-transfer.", hotel: "Fairfield Inn & Suites, 26 Marriott Dr, Moncton, NB E1A 7S4 — check-in Jun 14, itin 72075392602940", radio: "Codiac 93.5 FM", radioEmail: "musique@codiacfm.ca" },
-  { date: "2026-06-18", city: "Chicago", country: "IL", venue: "The Hideout", venueAddr: "1354 W. Wabansia Ave., Chicago, IL 60642", loadin: "5:30 PM (soundcheck 5:45)", setTime: "9:00–10:00 PM (doors 7:30)", details: "21+. NO backline — bring all gear. Load-in via alley behind stage, then move car to free street parking. Wifi HIDEOUT_GUEST / WoodenLeg. Guest list 5/act to door before doors. Merch 100% to band, 6ft table provided. DOS: Kwame Caldwell, production@hideoutchicago.com / 773-484-3755. Payment by check after show (W9 required).", radio: "WLUW 88.7 FM", radioEmail: "musicdeptwluw@gmail.com" },
+  { date: "2026-06-13", city: "Halifax", country: "NS", venue: "Seahorse Tavern (Everyseeker Fest)", venueAddr: "2037 Gottingen St., Halifax, NS (entrance on Portland)", loadin: "No later than 15 min before soundcheck (5:30 PM)", setTime: "11:00 PM, 60 min (doors 9:00)", info: [["Age", "19+"], ["Backline", "Provided"], ["Sound tech", "Sara Martin, saramartin.audio@gmail.com"], ["Admission", "PWYC @ everyseeker.com"], ["Merch", "100% venue-sold, table + volunteer, bring signage (no float/reader)"], ["Catering", "Festival catering + water backstage"], ["After-party", "Listen Halifax, Sun Jun 14"], ["Contact", "Gianna (hosp/transpo) 902.440.1258"], ["Contact", "Tynan (tech) 902.222.4683"], ["Contact", "Shuvanjan (payment) 902.401.9459"], ["Note", "Tag @everyseeker"]], hotel: "Hampton Inn, 1960 Brunswick St, Halifax NS B3J 2G7 — Jun 13-14, 2 rooms, conf 91991862 (room+tax only, bring CC for incidentals)" },
+  { date: "2026-06-14", city: "Moncton", country: "NB", venue: "Tide & Boar Ballroom", venueAddr: "700 Main St., Moncton, NB E1C 1E3", loadin: "4:00 PM (no noise til 4, soundcheck 4:00)", setTime: "10:00 PM (doors 7:00, curfew midnight)", info: [["Age", "19+, cap 200"], ["Tickets", "Adv $15 / door $20"], ["Supports", "Customer Service 9PM, Diner Drugs 8PM"], ["Wifi", "Duo Cafe / boarpoutine"], ["Merch", "100% to artist"], ["Parking", "Right on Downing St after venue, bus+trailer behind building"], ["Settlement", "Zach Atkinson e-transfer"]], hotel: "Fairfield Inn & Suites, 26 Marriott Dr, Moncton, NB E1A 7S4 — check-in Jun 14, itin 72075392602940", radio: "Codiac 93.5 FM", radioEmail: "musique@codiacfm.ca" },
+  { date: "2026-06-18", city: "Chicago", country: "IL", venue: "The Hideout", venueAddr: "1354 W. Wabansia Ave., Chicago, IL 60642", loadin: "5:30 PM (soundcheck 5:45)", setTime: "9:00–10:00 PM (doors 7:30)", info: [["Age", "21+"], ["Backline", "NONE — bring all gear"], ["Load-in", "Alley behind stage, then move car to free street parking"], ["Wifi", "HIDEOUT_GUEST / WoodenLeg"], ["Guest list", "5/act to door before doors"], ["Merch", "100% to band, 6ft table provided"], ["DOS", "Kwame Caldwell, production@hideoutchicago.com / 773-484-3755"], ["Payment", "Check after show (W9 required)"]], radio: "WLUW 88.7 FM", radioEmail: "musicdeptwluw@gmail.com" },
   { date: "2026-06-19", city: "Detroit", country: "MI", venue: "The Sanctuary / Crypt", venueAddr: "15701 James Couzens Fwy., Detroit, MI 48238", radio: "WDET 101.9 FM", radioEmail: "via wdet.org" },
   { date: "2026-06-21", city: "Gilbert", country: "PA", venue: "Camp Punksylvania", venueAddr: "West End Fairgrounds, 570 Fairground Rd., Gilbert, PA" },
   { date: "2026-06-26", city: "Vancouver", country: "BC", venue: "Black to The Future (Black Music Month)", venueAddr: "2111 Main St., Vancouver, BC V5T 3C6", flight: "Jun 25 TOR→VAN · Flair F8611 · YYZ 1:55PM → YVR 4:05PM · conf 2GXV2Q · Lite + 10kg" },
@@ -801,23 +801,21 @@ Thanks so much — genuinely looking forward to this one.
 Denz — The OBGMs`;
 
             const bandSubject = sel ? `${sel.city} ${formatDate(sel.date)} — show + stay` : 'Show + stay details';
+            const infoLines = (sel && sel.info) ? sel.info.map(([k, v]) => `${k}: ${v}`).join('\n') : '';
             const bandBody = sel ? `Team,
 
 Here's the info for ${sel.city} on ${formatDate(sel.date)}.
 
-SHOW
+═══ SHOW ═══
 Venue: ${d.venue || sel.venue || 'TBD'}
 Address: ${d.venueAddr || sel.venueAddr || 'TBD'}
 Load-in: ${d.loadin || sel.loadin || 'TBD'}
-Set time: ${d.setTime || sel.setTime || 'TBD'}${sel.details ? '\n\n' + sel.details : ''}
-
-STAY
+Set time: ${d.setTime || sel.setTime || 'TBD'}
+${infoLines ? '\n─ DETAILS ─\n' + infoLines + '\n' : ''}
+═══ STAY ═══
 Hotel: ${d.hotel || sel.hotel || 'TBD'}
-Address: ${d.hotelAddr || 'TBD'}
-Check-in: ${d.checkin || 'TBD'}
-Confirmation #: ${d.conf || 'TBD'}
-
-TRAVEL
+${d.hotelAddr ? 'Address: ' + d.hotelAddr + '\n' : ''}${d.checkin ? 'Check-in: ' + d.checkin + '\n' : ''}${d.conf ? 'Confirmation #: ' + d.conf + '\n' : ''}
+═══ TRAVEL ═══
 ${d.travelMode === 'flight' || (sel.flight && d.travelMode !== 'van') ? (d.flightInfo || sel.flight || 'Flight — TBD') : 'Van' + (d.driveNotes ? ' — ' + d.driveNotes : '')}
 
 ${d.notes ? 'NOTES\n' + d.notes + '\n\n' : ''}— Denz` : '';
