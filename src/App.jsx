@@ -36,7 +36,7 @@ const TOUR = [
 // Pre-loaded tour costs from receipts (CAD). Each show keys to income[] + expenses[] lines.
 // EU receipts converted: EUR 1.47, GBP 1.71, DKK 0.197.
 const PNL_SEED = {
-  "2026-05-25": { expenses: [
+  "2026-05-25": { income: [{ label: "Guarantee (€600)", amt: 882.00 }], expenses: [
     { label: "Van rental — 22 days + delivery (GBP)", amt: 4275.00 },
     { label: "Backline — Sideshow4U (GBP)", amt: 1655.28 },
     { label: "Diesel — Shell London (GBP)", amt: 161.10 },
@@ -45,19 +45,19 @@ const PNL_SEED = {
     { label: "Supplies — Lidl (GBP)", amt: 28.86 },
     { label: "AdBlue — BP Waalre (EUR)", amt: 36.74 },
   ] },
-  "2026-05-26": { expenses: [
+  "2026-05-26": { income: [{ label: "Guarantee (€300)", amt: 441.00 }], expenses: [
     { label: "Diesel — Q8 Sønderborg #1 (DKK)", amt: 39.40 },
     { label: "Diesel — Q8 Sønderborg #2 (DKK)", amt: 175.83 },
     { label: "Diesel — Aral Würzburg (EUR)", amt: 170.51 },
   ] },
-  "2026-05-28": { expenses: [
+  "2026-05-28": { income: [{ label: "Guarantee (€500)", amt: 735.00 }], expenses: [
     { label: "Diesel — Autohof Vöhringen (EUR)", amt: 139.80 },
     { label: "Diesel — Esso Péronne (EUR)", amt: 147.00 },
     { label: "Toll — Liefkenshoek (EUR)", amt: 11.76 },
     { label: "Toll — Sanef 23/05 (EUR)", amt: 27.78 },
     { label: "Toll — Sanef 24/05 (EUR)", amt: 27.78 },
   ] },
-  "2026-05-29": { expenses: [
+  "2026-05-29": { income: [{ label: "Guarantee (75% of first tix — TBD)", amt: 0 }], expenses: [
     { label: "Diesel — Intermarché (EUR)", amt: 144.82 },
     { label: "Toll — Area (EUR)", amt: 22.34 },
     { label: "Toll — SFTRF Maurienne (EUR)", amt: 8.08 },
@@ -66,7 +66,7 @@ const PNL_SEED = {
     { label: "Toll — SITAF b (EUR)", amt: 8.08 },
     { label: "Toll — Satap (EUR)", amt: 26.61 },
   ] },
-  "2026-05-30": { expenses: [
+  "2026-05-30": { income: [{ label: "Guarantee (€800)", amt: 1176.00 }], expenses: [
     { label: "Diesel — TotalEnergies Dijon (EUR)", amt: 73.50 },
     { label: "Diesel — Shell Sompuis (EUR)", amt: 138.24 },
     { label: "Diesel — Esso Angres (EUR)", amt: 63.21 },
@@ -76,7 +76,7 @@ const PNL_SEED = {
     { label: "Toll — Sanef Reims (EUR)", amt: 19.40 },
     { label: "Toll — Sanef Calais (EUR)", amt: 39.10 },
   ] },
-  "2026-06-11": { expenses: [
+  "2026-06-11": { income: [{ label: "Guarantee", amt: 0 }], expenses: [
     { label: "Hotel — Travellers Inn (2 rooms)", amt: 285.14 },
     { label: "Drum beater — Long & McQuade", amt: 38.70 },
     { label: "Gas — Petro-Canada (Brighton)", amt: 136.15 },
@@ -89,11 +89,19 @@ const PNL_SEED = {
     { label: "Pre-tour — Esso gas (Apr 30)", amt: 93.24 },
     { label: "Pre-tour — Petro-Canada Odessa gas", amt: 143.22 },
   ] },
-  "2026-06-12": { expenses: [{ label: "Hotel — Glendenning Hall", amt: 179.99 }] },
-  "2026-06-14": { expenses: [{ label: "Hotel — Fairfield Inn Moncton", amt: 222.25 }] },
-  "2026-06-26": { expenses: [{ label: "Flight — TOR→VAN (Flair, all 4)", amt: 1563.07 }] },
-  "2026-06-27": { expenses: [{ label: "Flight — VAN→WPG (WestJet, all 4)", amt: 1246.17 }] },
-  "2026-07-18": { expenses: [{ label: "Flight — EDM→YZF + return (Cdn North, all 4)", amt: 3225.20 }] },
+  "2026-06-12": { income: [{ label: "Guarantee", amt: 0 }], expenses: [{ label: "Hotel — Glendenning Hall", amt: 179.99 }] },
+  "2026-06-13": { income: [{ label: "Guarantee", amt: 3500.00 }] },
+  "2026-06-14": { income: [{ label: "Guarantee", amt: 0 }], expenses: [{ label: "Hotel — Fairfield Inn Moncton", amt: 222.25 }] },
+  "2026-06-18": { income: [{ label: "Guarantee", amt: 750.00 }] },
+  "2026-06-19": { income: [{ label: "Guarantee", amt: 300.00 }] },
+  "2026-06-21": { income: [{ label: "Guarantee", amt: 1000.00 }] },
+  "2026-06-26": { income: [{ label: "Guarantee", amt: 4000.00 }], expenses: [{ label: "Flight — TOR→VAN (Flair, all 4)", amt: 1563.07 }] },
+  "2026-06-27": { income: [{ label: "Guarantee", amt: 4800.00 }], expenses: [{ label: "Flight — VAN→WPG (WestJet, all 4)", amt: 1246.17 }] },
+  "2026-07-17": { income: [{ label: "Guarantee", amt: 1250.00 }] },
+  "2026-07-18": { income: [{ label: "Guarantee", amt: 5000.00 }], expenses: [{ label: "Flight — EDM→YZF + return (Cdn North, all 4)", amt: 3225.20 }] },
+  "2026-08-07": { income: [{ label: "Guarantee", amt: 1000.00 }] },
+  "2026-08-28": { income: [{ label: "Guarantee", amt: 1000.00 }] },
+  "2026-09-25": { income: [{ label: "Guarantee", amt: 4000.00 }] },
 };
 
 const MORNING_STEPS = [
