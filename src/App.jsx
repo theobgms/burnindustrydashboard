@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import MoneyRoom from "./MoneyRoom.jsx";
 
 const TOUR = [
   { date: "2026-05-25", city: "Eindhoven", country: "NL", venue: "TBD" },
@@ -1427,16 +1428,7 @@ Denz — The OBGMs`}
         </>}
 
         {/* ══════════ MONEY ══════════ */}
-        {room === 'money' && <>
-          <div style={{ ...card, borderLeft:`3px solid ${C.gold}` }}>
-            <div style={{ ...label, color:C.gold }}>THE WAR CHEST</div>
-            <div style={{ ...mono, fontSize:12, color:C.muted, lineHeight:1.6 }}>Guarantees, expenses, debt, runway. This room comes online once we wire in real numbers — guarantees per show, merch margins, what's owed.</div>
-          </div>
-          <div style={{ ...card, opacity:0.5, textAlign:'center', padding:'32px 16px' }}>
-            <div style={{ ...pixel, fontSize:12, color:C.dim }}>COMING ONLINE</div>
-            <div style={{ ...mono, fontSize:11, color:C.muted, marginTop:10 }}>Tell me what you want to track first — guarantees, outstanding invoices, or a tour P&amp;L — and I'll build it.</div>
-          </div>
-        </>}
+        {room === 'money' && <MoneyRoom />}
 
       </div>
     </div>
